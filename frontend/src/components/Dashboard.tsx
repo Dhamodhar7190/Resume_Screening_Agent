@@ -18,11 +18,44 @@ import ScoringResults from './ScoringResults';
 import ProcessingStatus from './ProcessingStatus';
 
 interface JobAnalysis {
-  required_skills: string[];
-  preferred_skills: string[];
-  minimum_experience: number;
-  seniority_level: string;
-  summary: string;
+  required_skills: {
+    programming_languages?: string[];
+    web_frameworks?: string[];
+    databases?: string[];
+    cloud_platforms?: string[];
+    devops_tools?: string[];
+    data_tools?: string[];
+    frontend_tools?: string[];
+    mobile_development?: string[];
+    testing_tools?: string[];
+    version_control?: string[];
+    project_management?: string[];
+    other_technical?: string[];
+    soft_skills?: string[];
+  };
+  preferred_skills?: {
+    programming_languages?: string[];
+    web_frameworks?: string[];
+    databases?: string[];
+    cloud_platforms?: string[];
+    devops_tools?: string[];
+    data_tools?: string[];
+    other_technical?: string[];
+    soft_skills?: string[];
+  };
+  minimum_experience?: number;
+  preferred_experience?: number;
+  education_requirements?: {
+    required_degree?: string;
+    preferred_degree?: string;
+    field_of_study?: string[];
+    certifications?: string[];
+  };
+  seniority_level?: string;
+  summary?: string;
+  industry?: string;
+  remote_work?: string;
+  key_responsibilities?: string[];
 }
 
 interface ResumeFile {
@@ -65,6 +98,44 @@ const Dashboard: React.FC = () => {
     setResumes([]);
     setResults(null);
     setIsProcessing(false);
+  };
+
+  // Helper function to get all required skills as a flat array
+  const getAllRequiredSkills = (requiredSkills: JobAnalysis['required_skills']) => {
+    if (!requiredSkills) return [];
+    
+    const allSkills: string[] = [];
+    Object.values(requiredSkills).forEach(skillArray => {
+      if (Array.isArray(skillArray)) {
+        allSkills.push(...skillArray);
+      }
+    });
+    return allSkills;
+  };
+
+  // Helper function to get key technical skills for display
+  const getKeyTechnicalSkills = (requiredSkills: JobAnalysis['required_skills']) => {
+    if (!requiredSkills) return [];
+    
+    const keySkills: string[] = [];
+    
+    // Prioritize most important categories
+    const priorityCategories = [
+      'programming_languages',
+      'web_frameworks', 
+      'databases',
+      'cloud_platforms',
+      'devops_tools'
+    ];
+    
+    priorityCategories.forEach(category => {
+      const skills = requiredSkills[category as keyof typeof requiredSkills];
+      if (Array.isArray(skills)) {
+        keySkills.push(...skills.slice(0, 3)); // Take first 3 from each category
+      }
+    });
+    
+    return keySkills.slice(0, 8); // Show max 8 key skills
   };
 
   return (
@@ -167,13 +238,13 @@ const Dashboard: React.FC = () => {
                 setIsProcessing={setIsProcessing}
               />
               
-              {/* Show job summary */}
+              {/* Show enhanced job summary */}
               {jobAnalysis && (
                 <div className="mt-8">
                   <div className="card max-w-4xl mx-auto">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-semibold text-gray-900">
-                        Job Requirements Summary
+                        Enhanced Job Requirements Summary
                       </h3>
                       <button
                         onClick={() => setStep('job')}
@@ -182,11 +253,12 @@ const Dashboard: React.FC = () => {
                         Edit Job
                       </button>
                     </div>
+                    
                     <div className="grid md:grid-cols-2 gap-6">
                       <div>
-                        <h4 className="font-medium text-gray-900 mb-2">Required Skills</h4>
+                        <h4 className="font-medium text-gray-900 mb-2">Key Technical Skills</h4>
                         <div className="flex flex-wrap gap-2">
-                          {jobAnalysis.required_skills?.map((skill, index) => (
+                          {getKeyTechnicalSkills(jobAnalysis.required_skills).map((skill, index) => (
                             <span
                               key={index}
                               className="px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm font-medium"
@@ -195,17 +267,60 @@ const Dashboard: React.FC = () => {
                             </span>
                           ))}
                         </div>
+                        {jobAnalysis.required_skills?.soft_skills && jobAnalysis.required_skills.soft_skills.length > 0 && (
+                          <div className="mt-4">
+                            <h4 className="font-medium text-gray-900 mb-2">Soft Skills</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {jobAnalysis.required_skills.soft_skills.slice(0, 4).map((skill, index) => (
+                                <span
+                                  key={index}
+                                  className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
+                      
                       <div>
-                        <h4 className="font-medium text-gray-900 mb-2">Experience & Level</h4>
+                        <h4 className="font-medium text-gray-900 mb-2">Experience & Requirements</h4>
                         <div className="space-y-2">
                           <p className="text-sm text-gray-600">
-                            <span className="font-medium">Minimum Experience:</span> {jobAnalysis.minimum_experience || 'Not specified'} years
+                            <span className="font-medium">Experience:</span> {jobAnalysis.minimum_experience || 'Not specified'} years minimum
+                            {jobAnalysis.preferred_experience && jobAnalysis.preferred_experience !== jobAnalysis.minimum_experience && 
+                              `, ${jobAnalysis.preferred_experience} preferred`}
                           </p>
                           <p className="text-sm text-gray-600">
-                            <span className="font-medium">Seniority:</span> {jobAnalysis.seniority_level || 'Not specified'}
+                            <span className="font-medium">Level:</span> {jobAnalysis.seniority_level || 'Not specified'}
                           </p>
+                          {jobAnalysis.education_requirements?.required_degree && (
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Education:</span> {jobAnalysis.education_requirements.required_degree}
+                              {jobAnalysis.education_requirements.field_of_study && jobAnalysis.education_requirements.field_of_study.length > 0 && 
+                                ` in ${jobAnalysis.education_requirements.field_of_study.join(', ')}`}
+                            </p>
+                          )}
+                          {jobAnalysis.remote_work && (
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Work Style:</span> {jobAnalysis.remote_work}
+                            </p>
+                          )}
+                          {jobAnalysis.industry && (
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Industry:</span> {jobAnalysis.industry}
+                            </p>
+                          )}
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Show total skills count */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex items-center justify-between text-sm text-gray-600">
+                        <span>Total Required Skills: {getAllRequiredSkills(jobAnalysis.required_skills).length}</span>
+                        <span>Enhanced Analysis ✨</span>
                       </div>
                     </div>
                   </div>
@@ -239,7 +354,7 @@ const Dashboard: React.FC = () => {
           />
         )}
 
-        {/* Features Section (shown on job step) */}
+        {/* Enhanced Features Section (shown on job step) */}
         {step === 'job' && (
           <motion.div
             initial={{ opacity: 0, y: 40 }}
@@ -249,10 +364,10 @@ const Dashboard: React.FC = () => {
           >
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                AI-Powered Resume Screening
+                Enhanced AI-Powered Resume Screening
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Upload job requirements and let our AI analyze, score, and rank candidates automatically
+                Advanced skill categorization, career analysis, and intelligent matching with detailed insights
               </p>
             </div>
 
@@ -260,20 +375,20 @@ const Dashboard: React.FC = () => {
               {[
                 {
                   icon: Brain,
-                  title: 'Smart Analysis',
-                  description: 'AI extracts skills, experience, and qualifications from resumes with high accuracy',
+                  title: 'Smart Skill Analysis',
+                  description: 'Categorizes skills by type (languages, frameworks, databases) with proficiency levels',
                   color: 'primary'
                 },
                 {
-                  icon: Zap,
-                  title: 'Fast Processing',
-                  description: 'Process hundreds of resumes in minutes, not hours or days',
+                  icon: TrendingUp,
+                  title: 'Career Intelligence',
+                  description: 'Analyzes career progression, leadership experience, and growth trajectory',
                   color: 'success'
                 },
                 {
-                  icon: TrendingUp,
-                  title: 'Intelligent Scoring',
-                  description: 'Weighted scoring system ensures the best candidates rise to the top',
+                  icon: Zap,
+                  title: 'Enhanced Scoring',
+                  description: 'Intelligent matching with skill relationships, resume quality, and detailed justifications',
                   color: 'warning'
                 }
               ].map((feature, index) => {
