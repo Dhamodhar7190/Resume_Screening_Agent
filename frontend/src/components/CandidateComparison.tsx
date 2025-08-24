@@ -554,19 +554,6 @@ const CandidateComparison: React.FC<CandidateComparisonProps> = ({
                   Top score: {Math.max(...selectedCandidates.map(c => c.overall_score))}/100
                 </div>
                 
-                <div className="flex space-x-3">
-                  <button className="btn-secondary text-sm py-2 px-4 flex items-center space-x-2">
-                    <Eye className="w-4 h-4" />
-                    <span>View Details</span>
-                  </button>
-                  <button 
-                    onClick={exportComparison}
-                    className="btn-primary text-sm py-2 px-4 flex items-center space-x-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Export Comparison</span>
-                  </button>
-                </div>
               </div>
             </div>
           </div>

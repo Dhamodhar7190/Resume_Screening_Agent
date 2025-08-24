@@ -17,9 +17,6 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import axios from "axios";
-// Note: In your actual project, you'll import:
-// import axios from 'axios';
-// import toast from 'react-hot-toast';
 
 interface ResumeFile {
   file: File;
@@ -115,8 +112,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
     onFilesUploaded(updatedResumes);
     toast.success("File removed");
   };
-
-  // Update the startProcessing function in FileUpload.tsx
 
   const startProcessing = async () => {
     if (resumes.length === 0) {
@@ -222,8 +217,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
+  // 🌟 FIX: Single return with all content organized properly
   return (
     <div className="max-w-6xl mx-auto">
+      {/* Header - Always visible */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -249,153 +246,159 @@ const FileUpload: React.FC<FileUploadProps> = ({
         </p>
       </motion.div>
 
-      {/* Enhanced Upload Area */}
-      <div className="mb-8">
-        <motion.div
-          {...(getRootProps() as any)}
-          className={`
-            relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 overflow-hidden
-            ${
-              isDragActive || dragActive
-                ? "border-primary-500 bg-gradient-to-br from-primary-50 to-blue-50 scale-[1.02] shadow-xl"
-                : "border-gray-300 bg-gradient-to-br from-gray-50 to-white hover:border-primary-400 hover:bg-gradient-to-br hover:from-primary-50 hover:to-blue-50 hover:shadow-lg"
-            }
-          `}
-          animate={{
-            scale: dragActive ? 1.02 : 1,
-            boxShadow: dragActive
-              ? "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
-              : "0 0px 0px 0px rgba(0, 0, 0, 0)",
-          }}
-          transition={{ duration: 0.3 }}
-        >
-          <input {...getInputProps()} />
-
-          {/* Floating background elements */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {[...Array(5)].map((_, i) => (
-              <motion.div
-                key={i}
-                className="absolute w-32 h-32 bg-gradient-to-r from-primary-200/20 to-blue-200/20 rounded-full"
-                style={{
-                  left: `${20 + i * 15}%`,
-                  top: `${10 + i * 20}%`,
-                }}
-                animate={{
-                  y: dragActive ? [-10, 10] : [0, -20],
-                  x: dragActive ? [-5, 5] : [0, 10],
-                  rotate: dragActive ? [0, 360] : [0, 180],
-                }}
-                transition={{
-                  duration: 3 + i,
-                  repeat: Infinity,
-                  repeatType: "reverse",
-                  ease: "easeInOut",
-                }}
-              />
-            ))}
-          </div>
-
-          {/* Upload Icon with Animation */}
+      {/* 🌟 FIX: Single Upload Area - Only show when NOT processing AND no resumes uploaded yet */}
+      {!isProcessing && resumes.length === 0 && (
+        <div className="mb-8">
           <motion.div
-            animate={{
-              y: isDragActive || dragActive ? [-15, 5] : [0, -10],
-              rotate: isDragActive || dragActive ? [0, 10, -10, 0] : 0,
-              scale: isDragActive || dragActive ? [1, 1.2, 1] : 1,
-            }}
-            transition={{
-              duration: 0.6,
-              repeat: dragActive ? Infinity : 0,
-              repeatType: "reverse",
-            }}
-            className="relative z-10"
-          >
-            <Upload
-              className={`w-16 h-16 mx-auto mb-4 transition-colors duration-300 ${
+            {...(getRootProps() as any)}
+            className={`
+              relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 overflow-hidden
+              ${
                 isDragActive || dragActive
-                  ? "text-primary-600"
-                  : "text-gray-400"
-              }`}
-            />
-          </motion.div>
-
-          {/* Dynamic Content */}
-          <motion.div
-            className="relative z-10"
-            animate={{ scale: dragActive ? 1.05 : 1 }}
-            transition={{ duration: 0.2 }}
+                  ? "border-primary-500 bg-gradient-to-br from-primary-50 to-blue-50 scale-[1.02] shadow-xl"
+                  : "border-gray-300 bg-gradient-to-br from-gray-50 to-white hover:border-primary-400 hover:bg-gradient-to-br hover:from-primary-50 hover:to-blue-50 hover:shadow-lg"
+              }
+            `}
+            animate={{
+              scale: dragActive ? 1.02 : 1,
+              boxShadow: dragActive
+                ? "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+                : "0 0px 0px 0px rgba(0, 0, 0, 0)",
+            }}
+            transition={{ duration: 0.3 }}
           >
-            {isDragActive || dragActive ? (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-primary-600"
-              >
-                <p className="text-xl font-semibold mb-2">
-                  ✨ Drop the files here!
-                </p>
-                <p className="text-sm">We'll process them automatically</p>
+            <input {...getInputProps()} />
 
-                {/* Animated file count preview */}
-                {draggedFiles.length > 0 && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="mt-4 inline-block bg-primary-100 text-primary-800 px-4 py-2 rounded-full text-sm font-medium"
-                  >
-                    {draggedFiles.length} file
-                    {draggedFiles.length > 1 ? "s" : ""} ready to upload
-                  </motion.div>
-                )}
-              </motion.div>
-            ) : (
-              <div>
-                <p className="text-xl font-semibold text-gray-900 mb-2">
-                  Drop resume files here, or click to browse
-                </p>
-                <p className="text-gray-600 mb-4">
-                  Supports PDF, DOC, and DOCX files up to 10MB each
-                </p>
-                <motion.button
-                  className="btn-primary inline-flex items-center space-x-2"
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.95 }}
+            {/* Floating background elements */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              {[...Array(5)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-32 h-32 bg-gradient-to-r from-primary-200/20 to-blue-200/20 rounded-full"
+                  style={{
+                    left: `${20 + i * 15}%`,
+                    top: `${10 + i * 20}%`,
+                  }}
+                  animate={{
+                    y: dragActive ? [-10, 10] : [0, -20],
+                    x: dragActive ? [-5, 5] : [0, 10],
+                    rotate: dragActive ? [0, 360] : [0, 180],
+                  }}
+                  transition={{
+                    duration: 3 + i,
+                    repeat: Infinity,
+                    repeatType: "reverse",
+                    ease: "easeInOut",
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Upload Icon with Animation */}
+            <motion.div
+              animate={{
+                y: isDragActive || dragActive ? [-15, 5] : [0, -10],
+                rotate: isDragActive || dragActive ? [0, 10, -10, 0] : 0,
+                scale: isDragActive || dragActive ? [1, 1.2, 1] : 1,
+              }}
+              transition={{
+                duration: 0.6,
+                repeat: dragActive ? Infinity : 0,
+                repeatType: "reverse",
+              }}
+              className="relative z-10"
+            >
+              <Upload
+                className={`w-16 h-16 mx-auto mb-4 transition-colors duration-300 ${
+                  isDragActive || dragActive
+                    ? "text-primary-600"
+                    : "text-gray-400"
+                }`}
+              />
+            </motion.div>
+
+            {/* Dynamic Content */}
+            <motion.div
+              className="relative z-10"
+              animate={{ scale: dragActive ? 1.05 : 1 }}
+              transition={{ duration: 0.2 }}
+            >
+              {isDragActive || dragActive ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-primary-600"
                 >
-                  <Plus className="w-5 h-5" />
-                  <span>Choose Files</span>
-                </motion.button>
-              </div>
+                  <p className="text-xl font-semibold mb-2">
+                    ✨ Drop the files here!
+                  </p>
+                  <p className="text-sm">We'll process them automatically</p>
+
+                  {/* Animated file count preview */}
+                  {draggedFiles.length > 0 && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="mt-4 inline-block bg-primary-100 text-primary-800 px-4 py-2 rounded-full text-sm font-medium"
+                    >
+                      {draggedFiles.length} file
+                      {draggedFiles.length > 1 ? "s" : ""} ready to upload
+                    </motion.div>
+                  )}
+                </motion.div>
+              ) : (
+                <div>
+                  <p className="text-xl font-semibold text-gray-900 mb-2">
+                    Drop resume files here, or click to browse
+                  </p>
+                  <p className="text-gray-600 mb-4">
+                    Supports PDF, DOC, and DOCX files up to 10MB each
+                  </p>
+                  <motion.button
+                    className="btn-primary inline-flex items-center space-x-2"
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Plus className="w-5 h-5" />
+                    <span>Choose Files</span>
+                  </motion.button>
+                </div>
+              )}
+            </motion.div>
+
+            {/* Success Indicator */}
+            {dragActive && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0 }}
+                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20"
+              >
+                <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center shadow-2xl">
+                  <CheckCircle className="w-12 h-12 text-white" />
+                </div>
+              </motion.div>
             )}
           </motion.div>
+        </div>
+      )}
 
-          {/* File Counter Badge */}
-          {resumes.length > 0 && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="absolute top-4 right-4 z-20"
-            >
-              <div className="bg-gradient-to-r from-primary-600 to-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg">
-                {resumes.length} files ready 🚀
-              </div>
-            </motion.div>
-          )}
-
-          {/* Success Indicator */}
-          {dragActive && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0 }}
-              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20"
-            >
-              <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center shadow-2xl">
-                <CheckCircle className="w-12 h-12 text-white" />
-              </div>
-            </motion.div>
-          )}
-        </motion.div>
-      </div>
+      {/* 🌟 FIX: Compact Upload Area when files exist - allows adding more files */}
+      {!isProcessing && resumes.length > 0 && (
+        <div className="mb-6">
+          <motion.div
+            {...(getRootProps() as any)}
+            className="relative border border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-all duration-200"
+          >
+            <input {...getInputProps()} />
+            <div className="flex items-center justify-center space-x-3 text-gray-600">
+              <Plus className="w-5 h-5" />
+              <span className="text-sm font-medium">Add More Resumes</span>
+              <Upload className="w-5 h-5" />
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Enhanced Uploaded Files List */}
       <AnimatePresence>
@@ -413,7 +416,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
                   Uploaded Resumes ({resumes.length})
                 </h3>
                 <div className="flex space-x-2">
-                  {resumes.length > 1 && (
+                  {resumes.length > 1 && !isProcessing && (
                     <button
                       onClick={() => onFilesUploaded([])}
                       className="text-red-600 hover:text-red-700 text-sm font-medium px-3 py-1 rounded-lg hover:bg-red-50 transition-colors"
@@ -518,15 +521,16 @@ const FileUpload: React.FC<FileUploadProps> = ({
                         </button>
                       )}
 
-                      <motion.button
-                        onClick={() => removeFile(resume.id)}
-                        className="p-2 hover:bg-red-100 rounded-full transition-colors"
-                        disabled={isProcessing}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                      >
-                        <X className="w-4 h-4 text-gray-400 hover:text-red-600" />
-                      </motion.button>
+                      {!isProcessing && (
+                        <motion.button
+                          onClick={() => removeFile(resume.id)}
+                          className="p-2 hover:bg-red-100 rounded-full transition-colors"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          <X className="w-4 h-4 text-gray-400 hover:text-red-600" />
+                        </motion.button>
+                      )}
                     </div>
 
                     {/* Hover Effect Overlay */}
@@ -539,8 +543,32 @@ const FileUpload: React.FC<FileUploadProps> = ({
         )}
       </AnimatePresence>
 
+      {/* Processing Status */}
+      {isProcessing && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-8 text-center mb-8"
+        >
+          <motion.div
+            className="w-16 h-16 mx-auto mb-4 border-4 border-blue-500 border-t-transparent rounded-full"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          />
+          <h3 className="text-lg font-semibold text-blue-900 mb-2">
+            Processing {resumes.length} Resumes...
+          </h3>
+          <p className="text-blue-700">
+            Our AI is analyzing each resume against your job requirements. This may take a few minutes.
+          </p>
+          <div className="mt-4 text-sm text-blue-600">
+            ✨ Enhanced analysis in progress...
+          </div>
+        </motion.div>
+      )}
+
       {/* Enhanced Processing Button */}
-      {resumes.length > 0 && (
+      {resumes.length > 0 && !isProcessing && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -548,57 +576,31 @@ const FileUpload: React.FC<FileUploadProps> = ({
         >
           <motion.button
             onClick={startProcessing}
-            disabled={isProcessing || resumes.length === 0}
-            className={`
-              relative overflow-hidden flex items-center space-x-3 text-lg px-8 py-4 mx-auto min-w-[320px] rounded-xl font-semibold transition-all duration-300
-              ${
-                isProcessing
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl"
-              }
-            `}
-            whileHover={{
-              scale: isProcessing ? 1 : 1.02,
-              y: isProcessing ? 0 : -2,
-            }}
-            whileTap={{ scale: isProcessing ? 1 : 0.98 }}
+            className="relative overflow-hidden flex items-center space-x-3 text-lg px-8 py-4 mx-auto min-w-[320px] rounded-xl font-semibold transition-all duration-300 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl"
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
           >
             {/* Animated Background */}
-            {!isProcessing && (
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
-                animate={{ x: [-100, 100] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              />
-            )}
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent"
+              animate={{ x: [-100, 100] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            />
 
-            {isProcessing ? (
-              <>
-                <motion.div
-                  className="w-6 h-6 border-2 border-white border-t-transparent rounded-full"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                />
-                <span>Processing {resumes.length} Resumes...</span>
-              </>
-            ) : (
-              <>
-                <motion.div
-                  animate={{ rotate: [0, 15, -15, 0] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <Zap className="w-6 h-6" />
-                </motion.div>
-                <span>Start AI Analysis ({resumes.length} resumes)</span>
-                <motion.div
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                  className="text-xl"
-                >
-                  🚀
-                </motion.div>
-              </>
-            )}
+            <motion.div
+              animate={{ rotate: [0, 15, -15, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <Zap className="w-6 h-6" />
+            </motion.div>
+            <span>Start AI Analysis ({resumes.length} resumes)</span>
+            <motion.div
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="text-xl"
+            >
+              🚀
+            </motion.div>
           </motion.button>
 
           <motion.p
@@ -612,7 +614,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       )}
 
       {/* Info Cards for Empty State */}
-      {resumes.length === 0 && (
+      {resumes.length === 0 && !isProcessing && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

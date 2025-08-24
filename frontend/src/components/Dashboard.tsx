@@ -228,6 +228,7 @@ const Dashboard: React.FC = () => {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
             >
+              {/* 🔧 FIX: Single FileUpload component */}
               <FileUpload
                 jobAnalysis={jobAnalysis}
                 jobTitle={jobTitle}
@@ -238,17 +239,22 @@ const Dashboard: React.FC = () => {
                 setIsProcessing={setIsProcessing}
               />
               
-              {/* Show enhanced job summary */}
-              {jobAnalysis && (
-                <div className="mt-8">
+              {/* 🔧 FIX: Job summary moved BELOW upload, only show when NOT processing */}
+              {jobAnalysis && !isProcessing && (
+                <motion.div 
+                  className="mt-8"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
                   <div className="card max-w-4xl mx-auto">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-lg font-semibold text-gray-900">
-                        Enhanced Job Requirements Summary
+                        📊 Job Requirements Summary
                       </h3>
                       <button
                         onClick={() => setStep('job')}
-                        className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                        className="text-primary-600 hover:text-primary-700 text-sm font-medium px-3 py-1 rounded-lg hover:bg-primary-50 transition-colors"
                       >
                         Edit Job
                       </button>
@@ -256,7 +262,10 @@ const Dashboard: React.FC = () => {
                     
                     <div className="grid md:grid-cols-2 gap-6">
                       <div>
-                        <h4 className="font-medium text-gray-900 mb-2">Key Technical Skills</h4>
+                        <h4 className="font-medium text-gray-900 mb-2 flex items-center">
+                          <Brain className="w-4 h-4 mr-2 text-primary-600" />
+                          Key Technical Skills
+                        </h4>
                         <div className="flex flex-wrap gap-2">
                           {getKeyTechnicalSkills(jobAnalysis.required_skills).map((skill, index) => (
                             <span
@@ -269,7 +278,10 @@ const Dashboard: React.FC = () => {
                         </div>
                         {jobAnalysis.required_skills?.soft_skills && jobAnalysis.required_skills.soft_skills.length > 0 && (
                           <div className="mt-4">
-                            <h4 className="font-medium text-gray-900 mb-2">Soft Skills</h4>
+                            <h4 className="font-medium text-gray-900 mb-2 flex items-center">
+                              <Users className="w-4 h-4 mr-2 text-green-600" />
+                              Soft Skills
+                            </h4>
                             <div className="flex flex-wrap gap-2">
                               {jobAnalysis.required_skills.soft_skills.slice(0, 4).map((skill, index) => (
                                 <span
@@ -285,7 +297,10 @@ const Dashboard: React.FC = () => {
                       </div>
                       
                       <div>
-                        <h4 className="font-medium text-gray-900 mb-2">Experience & Requirements</h4>
+                        <h4 className="font-medium text-gray-900 mb-2 flex items-center">
+                          <TrendingUp className="w-4 h-4 mr-2 text-blue-600" />
+                          Experience & Requirements
+                        </h4>
                         <div className="space-y-2">
                           <p className="text-sm text-gray-600">
                             <span className="font-medium">Experience:</span> {jobAnalysis.minimum_experience || 'Not specified'} years minimum
@@ -319,12 +334,18 @@ const Dashboard: React.FC = () => {
                     {/* Show total skills count */}
                     <div className="mt-4 pt-4 border-t border-gray-200">
                       <div className="flex items-center justify-between text-sm text-gray-600">
-                        <span>Total Required Skills: {getAllRequiredSkills(jobAnalysis.required_skills).length}</span>
-                        <span>Enhanced Analysis ✨</span>
+                        <span className="flex items-center">
+                          <Sparkles className="w-4 h-4 mr-2 text-purple-600" />
+                          Total Required Skills: {getAllRequiredSkills(jobAnalysis.required_skills).length}
+                        </span>
+                        <span className="flex items-center text-purple-600 font-medium">
+                          <Zap className="w-4 h-4 mr-1" />
+                          Enhanced Analysis ✨
+                        </span>
                       </div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )}
             </motion.div>
           )}
@@ -346,76 +367,6 @@ const Dashboard: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Processing Status Overlay */}
-        {isProcessing && (
-          <ProcessingStatus
-            resumes={resumes}
-            currentStep="processing"
-          />
-        )}
-
-        {/* Enhanced Features Section (shown on job step) */}
-        {step === 'job' && (
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.6 }}
-            className="mt-16"
-          >
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                Enhanced AI-Powered Resume Screening
-              </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Advanced skill categorization, career analysis, and intelligent matching with detailed insights
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8">
-              {[
-                {
-                  icon: Brain,
-                  title: 'Smart Skill Analysis',
-                  description: 'Categorizes skills by type (languages, frameworks, databases) with proficiency levels',
-                  color: 'primary'
-                },
-                {
-                  icon: TrendingUp,
-                  title: 'Career Intelligence',
-                  description: 'Analyzes career progression, leadership experience, and growth trajectory',
-                  color: 'success'
-                },
-                {
-                  icon: Zap,
-                  title: 'Enhanced Scoring',
-                  description: 'Intelligent matching with skill relationships, resume quality, and detailed justifications',
-                  color: 'warning'
-                }
-              ].map((feature, index) => {
-                const Icon = feature.icon;
-                return (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.7 + index * 0.1, duration: 0.5 }}
-                    className="card text-center group hover:shadow-lg transition-all duration-300"
-                  >
-                    <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-${feature.color}-100 flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
-                      <Icon className={`w-8 h-8 text-${feature.color}-600`} />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                      {feature.title}
-                    </h3>
-                    <p className="text-gray-600">
-                      {feature.description}
-                    </p>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
       </div>
     </div>
   );
