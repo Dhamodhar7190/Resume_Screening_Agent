@@ -32,135 +32,197 @@ class ScoringEngine:
             "additional_qualifications": 0.10  # 10% - Extras
         }
         
-        # 🌟 ENHANCEMENT 1: Role-specific scoring weight adjustments
+        # 🌟 MISSING: Role-specific scoring weight adjustments
         self.role_specific_weights = {
+            "fullstack_developer": {
+                "programming_languages": 0.25,      # Core languages important
+                "web_frameworks": 0.30,             # Both FE & BE frameworks critical
+                "databases": 0.20,                  # Data layer understanding
+                "cloud_platforms": 0.15,            # Deployment and scaling
+                "devops_tools": 0.10,              # CI/CD and deployment
+                "frontend_tools": 0.15,            # UI/UX skills
+                "data_tools": 0.05,                # Nice to have
+                "version_control": 0.05,           # Basic requirement
+                "testing_tools": 0.05              # Quality assurance
+            },
             "frontend_developer": {
-                "web_frameworks": 0.35,      # React, Vue, Angular more important
-                "programming_languages": 0.25, # JavaScript/TypeScript focus
-                "databases": 0.10,           # Less critical for frontend
-                "cloud_platforms": 0.15,
-                "devops_tools": 0.05,        # Minimal for pure frontend
-                "frontend_tools": 0.30       # CSS, HTML, design tools critical
+                "web_frameworks": 0.35,            # React, Vue, Angular critical
+                "programming_languages": 0.25,     # JavaScript/TypeScript focus
+                "frontend_tools": 0.30,            # CSS, HTML, design tools
+                "databases": 0.05,                 # Less critical for frontend
+                "cloud_platforms": 0.10,           # Basic deployment knowledge
+                "devops_tools": 0.05,             # Minimal for pure frontend
+                "version_control": 0.10,           # Important for collaboration
+                "testing_tools": 0.10              # Frontend testing important
             },
             "backend_developer": {
-                "programming_languages": 0.35, # Core backend languages
-                "databases": 0.30,            # Database design critical
-                "web_frameworks": 0.20,       # Backend frameworks
-                "cloud_platforms": 0.25,
-                "devops_tools": 0.20,
-                "frontend_tools": 0.05        # Minimal frontend needs
-            },
-            "fullstack_developer": {
-                "programming_languages": 0.30,
-                "web_frameworks": 0.25,
-                "databases": 0.20,
-                "cloud_platforms": 0.20,
-                "devops_tools": 0.15,
-                "frontend_tools": 0.20
+                "programming_languages": 0.35,     # Core backend languages
+                "databases": 0.30,                 # Database design critical
+                "web_frameworks": 0.25,            # Backend frameworks/APIs
+                "cloud_platforms": 0.20,           # Infrastructure knowledge
+                "devops_tools": 0.15,             # CI/CD and deployment
+                "frontend_tools": 0.02,            # Minimal frontend needs
+                "version_control": 0.08,           # Code management
+                "testing_tools": 0.10              # Unit/integration testing
             },
             "data_scientist": {
-                "data_tools": 0.40,          # ML/Data tools most critical
-                "programming_languages": 0.30, # Python, R focus
-                "databases": 0.25,           # Data storage important
-                "cloud_platforms": 0.15,
-                "web_frameworks": 0.05,      # Less relevant
-                "project_management": 0.10   # Research methodology
+                "data_tools": 0.45,               # ML/Data science tools
+                "programming_languages": 0.30,    # Python, R focus
+                "databases": 0.25,                # Data querying critical
+                "cloud_platforms": 0.15,          # Cloud ML services
+                "web_frameworks": 0.05,           # Dashboard/API creation
+                "project_management": 0.10,       # Research methodology
+                "testing_tools": 0.05,            # Data validation
+                "version_control": 0.05           # Code versioning
             },
             "devops_engineer": {
-                "devops_tools": 0.40,        # Core DevOps tools
-                "cloud_platforms": 0.35,     # AWS/Azure expertise
-                "programming_languages": 0.20, # Scripting languages
+                "devops_tools": 0.40,             # Core DevOps tools
+                "cloud_platforms": 0.35,          # Infrastructure critical
+                "programming_languages": 0.20,    # Scripting languages
+                "databases": 0.10,                # Database administration
+                "web_frameworks": 0.05,           # Application understanding
+                "testing_tools": 0.08,            # Testing pipelines
+                "version_control": 0.12           # Code and infrastructure versioning
+            },
+            "mobile_developer": {
+                "mobile_development": 0.40,       # iOS/Android/React Native
+                "programming_languages": 0.30,    # Swift/Kotlin/Java/JS
+                "databases": 0.15,                # Mobile data storage
+                "cloud_platforms": 0.15,          # Backend services integration
+                "web_frameworks": 0.10,           # Hybrid development
+                "testing_tools": 0.10,            # Mobile testing
+                "version_control": 0.05           # Code management
+            },
+            "general_developer": {
+                "programming_languages": 0.25,
+                "web_frameworks": 0.20,
                 "databases": 0.15,
-                "web_frameworks": 0.05       # Minimal application focus
+                "cloud_platforms": 0.12,
+                "devops_tools": 0.10,
+                "frontend_tools": 0.10,
+                "testing_tools": 0.05,
+                "version_control": 0.03
             }
         }
         
-        # 🌟 ENHANCEMENT 2: Skill Intelligence Database
+        # Skill intelligence database for synonym and relationship matching
         self.skill_intelligence = {
             "synonyms": {
-                "javascript": ["js", "javascript", "ecmascript", "es6", "es2015", "nodejs", "node.js"],
-                "react": ["react.js", "reactjs", "react", "react native"],
-                "python": ["python", "python3", "py", "python 3.x"],
-                "sql": ["sql", "mysql", "postgresql", "postgres", "sqlite", "t-sql"],
-                "aws": ["amazon web services", "aws", "amazon aws", "ec2", "s3"],
-                "docker": ["docker", "containerization", "containers"],
-                "kubernetes": ["k8s", "kubernetes", "k8s orchestration"],
-                "git": ["git", "github", "gitlab", "version control", "source control"],
-                "agile": ["agile", "scrum", "kanban", "sprint"],
-                "machine learning": ["ml", "machine learning", "artificial intelligence", "ai"]
+                "javascript": ["js", "java script", "ecmascript", "javascript", "node", "nodejs"],
+                "python": ["py", "python3", "python 3", "python"],
+                "react": ["reactjs", "react.js", "react"],
+                "angular": ["angularjs", "angular.js", "angular"],
+                "vue": ["vuejs", "vue.js", "vue"],
+                "docker": ["containerization", "docker"],
+                "kubernetes": ["k8s", "kube", "kubernetes"],
+                "aws": ["amazon web services", "amazon aws", "aws"],
+                "postgresql": ["postgres", "postgresql", "postgre"],
+                "mysql": ["mysql", "my sql"],
+                "mongodb": ["mongo", "mongodb", "mongo db"],
+                "git": ["github", "gitlab", "version control", "git"],
+                "html": ["html5", "html"],
+                "css": ["css3", "css", "cascading style sheets"],
+                "sql": ["structured query language", "sql"],
+                "rest": ["rest api", "restful", "rest"],
+                "graphql": ["graph ql", "graphql"],
+                "typescript": ["ts", "typescript"],
+                "java": ["java"],
+                "csharp": ["c#", "c sharp", "csharp", ".net"],
+                "php": ["php"],
+                "ruby": ["ruby on rails", "rails", "ruby"],
+                "golang": ["go", "golang"],
+                "swift": ["swift"],
+                "kotlin": ["kotlin"]
             },
             "relationships": {
-                "react": ["javascript", "jsx", "html", "css"],
-                "django": ["python", "sql", "html"],
-                "spring": ["java", "sql", "maven"],
-                "tensorflow": ["python", "machine learning", "numpy"],
-                "kubernetes": ["docker", "containerization", "devops"],
-                "aws": ["cloud computing", "devops", "scalability"]
-            },
-            "hierarchies": {
-                "aws": {
-                    "aws certified solutions architect": 100,
-                    "aws certified developer": 85,
-                    "aws certified practitioner": 70,
-                    "aws experience": 60
-                },
-                "project_management": {
-                    "pmp": 100,
-                    "agile certified": 85,
-                    "scrum master": 80,
-                    "agile experience": 60
-                }
+                "react": ["javascript", "html", "css", "jsx", "redux", "webpack"],
+                "angular": ["javascript", "typescript", "html", "css", "rxjs"],
+                "vue": ["javascript", "html", "css", "vuex"],
+                "django": ["python", "postgresql", "html", "css"],
+                "flask": ["python", "html", "css", "sql"],
+                "express": ["javascript", "nodejs", "mongodb"],
+                "docker": ["kubernetes", "aws", "devops", "containerization"],
+                "kubernetes": ["docker", "aws", "devops", "microservices"],
+                "aws": ["docker", "kubernetes", "devops", "cloud"],
+                "postgresql": ["sql", "database", "backend"],
+                "mongodb": ["nosql", "database", "backend"],
+                "git": ["github", "gitlab", "version control"],
+                "python": ["django", "flask", "pandas", "numpy", "tensorflow"],
+                "javascript": ["react", "angular", "vue", "nodejs", "express"],
+                "java": ["spring", "hibernate", "maven", "gradle"]
             }
         }
         
-        # 🌟 ENHANCEMENT 3: Experience quality multipliers
+        # Experience quality indicators for enhanced analysis
         self.experience_quality_indicators = {
             "leadership_keywords": [
-                "led team", "managed team", "supervised", "mentored", "coached", 
-                "team lead", "technical lead", "project lead", "director", "manager"
+                "led team", "managed team", "team lead", "team leader", "managed", 
+                "supervised", "mentored", "coached", "directed", "oversaw",
+                "managed developers", "led developers", "tech lead", "technical lead",
+                "project lead", "team management", "people management"
             ],
             "impact_keywords": [
-                "increased", "decreased", "improved", "reduced", "optimized", 
-                "enhanced", "achieved", "delivered", "saved", "%", "million", "thousand"
+                "increased", "decreased", "improved", "reduced", "optimized",
+                "enhanced", "boosted", "accelerated", "streamlined", "automated",
+                "delivered", "achieved", "exceeded", "saved", "generated",
+                "performance improvement", "cost reduction", "efficiency gains"
             ],
             "innovation_keywords": [
-                "built", "created", "designed", "architected", "implemented", 
-                "launched", "pioneered", "established", "developed", "initiated"
+                "created", "developed", "designed", "built", "architected",
+                "implemented", "launched", "introduced", "pioneered", "initiated",
+                "innovative", "cutting-edge", "state-of-the-art", "breakthrough",
+                "patent", "open source", "published", "research", "novel approach"
             ],
             "scale_keywords": [
-                "enterprise", "large scale", "high volume", "million users", 
-                "distributed", "microservices", "scalable", "performance"
+                "million users", "thousand users", "large scale", "high volume",
+                "enterprise", "microservices", "distributed", "scalable",
+                "high availability", "load balancing", "performance tuning",
+                "big data", "cloud scale", "global", "enterprise-wide"
             ]
         }
         
-        # 🌟 ENHANCEMENT 4: Red flag patterns
+        # Red flag detection patterns
         self.red_flag_patterns = {
             "job_hopping": {
-                "pattern": "multiple_short_tenures",
-                "threshold": 3,  # 3+ jobs under 1 year
-                "penalty": 0.15,
-                "description": "Frequent job changes (< 1 year)"
-            },
-            "skill_inconsistency": {
-                "pattern": "experience_vs_skills_mismatch", 
-                "penalty": 0.10,
-                "description": "Claimed experience doesn't match timeline"
+                "threshold": 3,  # 3 or more short tenures
+                "penalty": 0.15   # 15% score penalty
             },
             "employment_gaps": {
-                "pattern": "long_gaps_without_explanation",
-                "threshold": 6,  # 6+ months gap
-                "penalty": 0.08,
-                "description": "Unexplained employment gaps > 6 months"
+                "threshold": 6,   # 6+ month gap
+                "penalty": 0.08   # 8% score penalty  
             },
             "over_qualification": {
-                "pattern": "significantly_overqualified",
-                "penalty": 0.05,
-                "description": "May be overqualified and leave quickly"
+                "threshold": 15,  # 15+ years experience for junior roles
+                "penalty": 0.05   # 5% score penalty
+            },
+            "skill_inconsistency": {
+                "threshold": 3,   # Major inconsistencies
+                "penalty": 0.12   # 12% score penalty
             }
         }
         
-        logger.info("✅ Enhanced ScoringEngine initialized with enterprise intelligence")
-    
+        logger.info("✅ Enhanced ScoringEngine initialized with enterprise features")
+
+    def _get_role_specific_weights_fixed(self, detected_role: str) -> dict:
+        """
+        🎯 IMPROVED: Get role-specific weights with better defaults
+        """
+        
+        # Return role-specific weights or a balanced default
+        if detected_role in self.role_specific_weights:
+            return self.role_specific_weights[detected_role]
+        
+        # Improved default weights for unknown roles
+        return {
+            "programming_languages": 0.25,
+            "web_frameworks": 0.20,
+            "databases": 0.15,
+            "cloud_platforms": 0.12,
+            "devops_tools": 0.10,
+            "frontend_tools": 0.10,
+            "testing_tools": 0.05,
+            "version_control": 0.03
+        }
     async def score_resume_against_job(
         self, 
         resume_text: str, 
@@ -168,7 +230,14 @@ class ScoringEngine:
         filename: str = "resume.pdf"
     ) -> Dict[str, Any]:
         """
-        🎯 ENHANCED resume scoring with all three improvements
+        🎯 ENHANCED RESUME SCORING - Main orchestration method
+        
+        This method coordinates all the enhanced scoring features:
+        1. Skill Intelligence & Synonym Mapping
+        2. Role-Specific Scoring Weights  
+        3. Experience Quality Analysis
+        4. Red Flag Detection
+        5. Enhanced Insights Generation
         """
         
         start_time = datetime.now()
@@ -176,40 +245,41 @@ class ScoringEngine:
         
         try:
             # Step 1: Enhanced resume analysis with job context
-            resume_analysis = await self.ai_analyzer.enhanced_resume_analysis(
+            resume_analysis = await self.ai_analyzer.analyze_resume_content(
                 resume_text, 
                 job_analysis
             )
             
-            # Step 2: Detect role type for role-specific weighting
-            detected_role = self._detect_role_type(job_analysis)
+            # Step 2: Detect role type for intelligent weighting
+            detected_role = self._detect_role_type(job_analysis, resume_analysis)
+            logger.info(f"📊 Detected role: {detected_role}")
             
             # Step 3: Enhanced skill matching with intelligence
             skills_scoring = await self._score_enhanced_skills_match(
                 resume_analysis, 
-                job_analysis,
+                job_analysis, 
                 detected_role
             )
             
-            # Step 4: Experience evaluation with quality analysis
+            # Step 4: Enhanced experience evaluation with quality analysis
             experience_scoring = await self._score_enhanced_experience(
                 resume_analysis, 
                 job_analysis
             )
             
-            # Step 5: Education scoring (improved)
+            # Step 5: Education and certification scoring
             education_scoring = self._score_education_match(
                 resume_analysis, 
                 job_analysis
             )
             
-            # Step 6: Additional qualifications with quality bonuses
+            # Step 6: Enhanced additional qualifications scoring
             additional_scoring = await self._score_enhanced_additional_qualifications(
                 resume_analysis, 
                 job_analysis
             )
             
-            # Step 7: Apply red flag detection
+            # Step 7: Red flag detection and analysis
             red_flag_analysis = self._detect_red_flags(resume_analysis)
             
             # Step 8: Calculate enhanced weighted final score
@@ -220,7 +290,7 @@ class ScoringEngine:
                 "additional_qualifications_score": additional_scoring["score"]
             }, red_flag_analysis, detected_role)
             
-            # Step 9: Generate intelligent insights
+            # Step 9: Generate enhanced intelligent insights
             insights = await self._generate_enhanced_insights(
                 resume_analysis, 
                 job_analysis, 
@@ -228,7 +298,7 @@ class ScoringEngine:
                 experience_scoring
             )
             
-            # Step 10: Compile comprehensive results
+            # Step 10: Compile comprehensive enhanced results
             processing_time = (datetime.now() - start_time).total_seconds()
             
             result = {
@@ -236,7 +306,7 @@ class ScoringEngine:
                 "overall_score": round(final_scores["overall_score"], 1),
                 "recommendation": self._get_enhanced_recommendation(final_scores["overall_score"]),
                 
-                # Enhanced score breakdown with intelligence
+                # Enhanced score breakdown
                 "score_breakdown": {
                     "required_skills": round(skills_scoring["score"], 1),
                     "experience_level": round(experience_scoring["score"], 1),
@@ -244,28 +314,37 @@ class ScoringEngine:
                     "additional_qualifications": round(additional_scoring["score"], 1)
                 },
                 
-                # 🌟 NEW: Enhanced skill analysis with intelligence
+                # 🌟 NEW: Enhanced skill intelligence analysis
                 "enhanced_skill_analysis": {
-                    "detected_role": detected_role,
-                    "matched_skills_count": skills_scoring.get("total_matched", 0),
-                    "missing_critical_skills": skills_scoring.get("missing_critical", []),
+                    "matched_skills": skills_scoring["matched_skills"],
+                    "missing_critical": skills_scoring["missing_critical"],
+                    "skill_categories_coverage": skills_scoring["category_coverage"],
+                    "proficiency_breakdown": skills_scoring.get("proficiency_score", 0),
+                    "synonym_matches": skills_scoring.get("synonym_matches", []),
                     "skill_relationship_bonuses": skills_scoring.get("relationship_bonuses", {}),
-                    "proficiency_weighted_score": skills_scoring.get("proficiency_score", 0),
-                    "synonym_matches": skills_scoring.get("synonym_matches", [])
+                    "role_weights_applied": skills_scoring.get("role_weights_applied", {}),
+                    "detected_role": detected_role
                 },
                 
-                # 🌟 NEW: Experience quality analysis
+                # 🌟 NEW: Enhanced experience quality analysis  
                 "experience_quality_analysis": {
-                    "leadership_score": experience_scoring.get("leadership_score", 0),
-                    "impact_score": experience_scoring.get("impact_score", 0),
-                    "innovation_score": experience_scoring.get("innovation_score", 0),
-                    "scale_score": experience_scoring.get("scale_score", 0),
-                    "quantified_achievements": experience_scoring.get("quantified_achievements", []),
-                    "experience_quality_bonus": experience_scoring.get("quality_bonus", 0)
+                    "base_experience_score": experience_scoring["base_score"],
+                    "quality_bonus": experience_scoring["quality_bonus"],
+                    "leadership_score": experience_scoring["leadership_score"],
+                    "impact_score": experience_scoring["impact_score"],
+                    "innovation_score": experience_scoring["innovation_score"],
+                    "scale_score": experience_scoring["scale_score"],
+                    "quantified_achievements": experience_scoring["quantified_achievements"],
+                    "experience_quality_tier": experience_scoring["analysis"]["experience_quality_tier"]
                 },
                 
-                # 🌟 NEW: Red flag detection
-                "red_flag_analysis": red_flag_analysis,
+                # 🌟 NEW: Red flag detection results
+                "red_flag_analysis": {
+                    "flags_detected": red_flag_analysis["flags_detected"],
+                    "risk_level": red_flag_analysis["risk_level"],
+                    "penalty_applied": red_flag_analysis["total_penalty"],
+                    "has_concerns": red_flag_analysis["has_concerns"]
+                },
                 
                 # Enhanced candidate insights
                 "candidate_insights": {
@@ -273,13 +352,18 @@ class ScoringEngine:
                     "career_trajectory": resume_analysis.get("career_insights", {}).get("career_trajectory", "unknown"),
                     "specializations": resume_analysis.get("career_insights", {}).get("specializations", []),
                     "skill_diversity": resume_analysis.get("skill_diversity_score", 0),
-                    "resume_quality": resume_analysis.get("resume_quality", {}).get("overall_quality", 0)
+                    "resume_quality": resume_analysis.get("resume_quality", {}).get("overall_quality", 0),
+                    "role_fit_score": final_scores.get("role_fit_score", 0)
                 },
                 
-                # Traditional fields (enhanced)
+                # Traditional enhanced fields
                 "key_strengths": insights["strengths"],
                 "areas_of_concern": insights["concerns"],
                 "justification": insights["detailed_analysis"],
+                "role_specific_insights": {
+                    "role_strengths": insights.get("role_strengths", []),
+                    "role_gaps": insights.get("role_gaps", [])
+                },
                 
                 # Enhanced candidate info
                 "candidate_info": {
@@ -294,19 +378,20 @@ class ScoringEngine:
                     "current_level": resume_analysis.get("experience_analysis", {}).get("current_level")
                 },
                 
-                # Processing metadata
-                "processing_time_seconds": round(processing_time, 2),
-                "ai_provider": "google_gemini_enhanced",
-                "analysis_version": "3.0_enterprise",
-                "enhancement_features": [
-                    "skill_intelligence",
-                    "role_specific_weighting", 
-                    "experience_quality_analysis",
-                    "red_flag_detection",
-                    "synonym_matching",
-                    "leadership_detection"
-                ],
-                "timestamp": datetime.now().isoformat()
+                # Enhanced processing metadata
+                "processing_metadata": {
+                    "processing_time_seconds": round(processing_time, 2),
+                    "ai_provider": "google_gemini_enhanced",
+                    "analysis_version": "enterprise_3.0",
+                    "timestamp": datetime.now().isoformat(),
+                    "features_applied": [
+                        "skill_intelligence",
+                        "role_specific_weighting", 
+                        "experience_quality_analysis",
+                        "red_flag_detection",
+                        "enhanced_insights"
+                    ]
+                }
             }
             
             logger.info(f"✅ Enhanced scoring completed: {filename} - Score: {result['overall_score']}/100 (Role: {detected_role})")
@@ -315,70 +400,61 @@ class ScoringEngine:
         except Exception as e:
             logger.error(f"❌ Error in enhanced scoring {filename}: {str(e)}")
             raise Exception(f"Enhanced scoring failed: {str(e)}")
-    
-    def _detect_role_type(self, job_analysis: Dict[str, Any]) -> str:
-        """🎯 Detect the type of role to apply appropriate weighting"""
-        
-        required_skills = job_analysis.get("required_skills", {})
-        job_title = job_analysis.get("summary", "").lower()
-        
-        # Analyze skill distribution to determine role type
-        frontend_score = len(required_skills.get("frontend_tools", [])) + len(required_skills.get("web_frameworks", []))
-        backend_score = len(required_skills.get("databases", [])) + len(required_skills.get("cloud_platforms", []))
-        data_score = len(required_skills.get("data_tools", [])) * 2  # Weight data tools higher
-        devops_score = len(required_skills.get("devops_tools", [])) * 2  # Weight DevOps tools higher
-        
-        # Check job title keywords
-        if any(keyword in job_title for keyword in ["data scientist", "ml engineer", "data analyst"]):
-            return "data_scientist"
-        elif any(keyword in job_title for keyword in ["devops", "sre", "infrastructure", "platform"]):
-            return "devops_engineer"
-        elif any(keyword in job_title for keyword in ["frontend", "ui", "ux"]):
-            return "frontend_developer"
-        elif any(keyword in job_title for keyword in ["backend", "api", "server"]):
-            return "backend_developer"
-        elif frontend_score > 0 and backend_score > 0:
-            return "fullstack_developer"
-        elif data_score >= 2:
-            return "data_scientist"
-        elif devops_score >= 2:
-            return "devops_engineer"
-        elif frontend_score > backend_score:
-            return "frontend_developer"
-        elif backend_score > 0:
-            return "backend_developer"
-        else:
-            return "fullstack_developer"  # Default fallback
-    
+
     async def _score_enhanced_skills_match(self, resume_analysis: Dict[str, Any], job_analysis: Dict[str, Any], detected_role: str) -> Dict[str, Any]:
-        """🧠 Enhanced skill matching with intelligence and role-specific weighting"""
+        """🧠 IMPROVED: Enhanced skill matching with better role-specific weighting"""
         
         required_skills = job_analysis.get("required_skills", {})
         candidate_skills = resume_analysis.get("skills_by_category", {})
         
         # Get role-specific weights
-        role_weights = self.role_specific_weights.get(detected_role, {})
+        role_weights = self._get_role_specific_weights_fixed(detected_role)
         
         matched_skills = []
         missing_skills = []
         category_scores = {}
         synonym_matches = []
-        relationship_bonuses = {}
         
         total_weighted_score = 0
         total_category_weight = 0
         
-        # Analyze each skill category with role-specific importance
-        for category, required_list in required_skills.items():
-            if not required_list or category not in candidate_skills:
+        # 🌟 IMPROVEMENT: Better handling of missing categories
+        for category, weight in role_weights.items():
+            if weight <= 0:
                 continue
                 
-            category_weight = role_weights.get(category, 0.1)  # Role-specific weight
+            required_list = required_skills.get(category, [])
+            candidate_category_skills = candidate_skills.get(category, [])
             
-            if category_weight == 0:
-                continue  # Skip categories not relevant to this role
+            # If no requirements in this category, give full score
+            if not required_list:
+                category_scores[category] = 100
+                total_weighted_score += 100 * weight
+                total_category_weight += weight
+                continue
                 
-            candidate_category_skills = candidate_skills[category]
+            # If no candidate skills but requirements exist, score based on role criticality
+            if not candidate_category_skills:
+                # Critical categories get 0, less critical get partial credit
+                if weight >= 0.25:  # Critical category
+                    category_score = 0
+                elif weight >= 0.15:  # Important category  
+                    category_score = 20
+                else:  # Nice-to-have category
+                    category_score = 60
+                
+                category_scores[category] = category_score
+                total_weighted_score += category_score * weight
+                total_category_weight += weight
+                
+                # Add all required skills as missing
+                for skill in required_list:
+                    missing_skills.append({
+                        "skill": skill,
+                        "category": category,
+                        "critical": weight >= 0.25
+                    })
+                continue
             
             # Enhanced matching with skill intelligence
             category_result = self._match_skills_with_intelligence(
@@ -393,17 +469,17 @@ class ScoringEngine:
             synonym_matches.extend(category_result["synonyms"])
             
             # Apply role-specific weighting
-            total_weighted_score += category_result["score"] * category_weight
-            total_category_weight += category_weight
+            total_weighted_score += category_result["score"] * weight
+            total_category_weight += weight
         
         # Calculate overall skills score
         overall_skills_score = (total_weighted_score / total_category_weight) if total_category_weight > 0 else 0
         
-        # Apply skill relationship bonuses
+        # Apply skill relationship bonuses (reduced impact for balance)
         relationship_bonuses = self._calculate_skill_relationship_bonuses(matched_skills)
         bonus_multiplier = 1.0
         for bonus_name, bonus_value in relationship_bonuses.items():
-            bonus_multiplier += bonus_value * 0.2  # 20% of bonus value
+            bonus_multiplier += bonus_value * 0.15  # Reduced from 0.2 to 0.15
         
         enhanced_score = min(overall_skills_score * bonus_multiplier, 100)
         
@@ -417,8 +493,166 @@ class ScoringEngine:
             "category_coverage": category_scores,
             "synonym_matches": synonym_matches,
             "total_matched": len(matched_skills),
-            "proficiency_score": self._calculate_proficiency_score(matched_skills)
+            "proficiency_score": self._calculate_proficiency_score(matched_skills),
+            "role_weights_applied": role_weights,
+            "detected_role": detected_role
         }
+    def _detect_role_type(self, job_analysis: Dict[str, Any], resume_analysis: Dict[str, Any]) -> str:
+        """
+        🎯 FIXED: Detect the candidate's role type based on THEIR skills, not job requirements
+        
+        This method should analyze the candidate's skills and experience to determine
+        what type of developer they are, then apply appropriate scoring weights.
+        """
+        
+        # Get candidate's skills from resume analysis
+        candidate_skills = resume_analysis.get("skills_by_category", {})
+        work_history = resume_analysis.get("work_history", [])
+        candidate_summary = resume_analysis.get("candidate_summary", "").lower()
+        
+        # Extract job titles from work history
+        job_titles = " ".join([job.get("title", "").lower() for job in work_history])
+        combined_text = f"{candidate_summary} {job_titles}".lower()
+        
+        logger.info(f"🎯 Analyzing candidate's role based on their skills and experience")
+        
+        # 🌟 IMPROVEMENT 1: Enhanced technology detection for candidate
+        frontend_techs = [
+            "react", "angular", "vue", "javascript", "typescript", "jsx", "tsx",
+            "html", "css", "scss", "sass", "bootstrap", "material-ui", "angular material",
+            "frontend", "front-end", "ui", "user interface", "responsive design"
+        ]
+        
+        backend_techs = [
+            "python", "django", "flask", "fastapi", "java", "spring", "spring boot",
+            "node.js", "nodejs", "express", "api", "rest", "restful", "graphql",
+            "backend", "back-end", "server-side", "microservices", "django rest framework",
+            "rest framework", "php", "laravel", "ruby", "rails", "go", "golang", ".net", "c#"
+        ]
+        
+        fullstack_indicators = [
+            "full stack", "fullstack", "full-stack", "end-to-end", "end to end",
+            "frontend and backend", "backend and frontend", "front-end and back-end"
+        ]
+        
+        devops_techs = [
+            "docker", "kubernetes", "k8s", "jenkins", "aws", "azure", "gcp", "terraform", 
+            "ansible", "devops", "ci/cd", "infrastructure", "deployment", "containerization"
+        ]
+        
+        data_techs = [
+            "pandas", "numpy", "tensorflow", "pytorch", "scikit-learn", "machine learning",
+            "data science", "ml", "ai", "artificial intelligence", "jupyter", "spark",
+            "data analysis", "data engineering"
+        ]
+        
+        mobile_techs = [
+            "ios", "android", "swift", "kotlin", "react native", "flutter", 
+            "mobile", "mobile development", "xamarin"
+        ]
+        
+        # 🌟 IMPROVEMENT 2: Count skills from candidate's actual skills
+        def count_candidate_skills(tech_list, skills_dict, text):
+            count = 0
+            matches = []
+            
+            # Check skills from resume analysis
+            for category_name, skills_list in skills_dict.items():
+                if isinstance(skills_list, list):
+                    for skill_item in skills_list:
+                        if isinstance(skill_item, dict):
+                            skill_name = skill_item.get("name", "").lower()
+                        else:
+                            skill_name = str(skill_item).lower()
+                        
+                        for tech in tech_list:
+                            if tech in skill_name or skill_name in tech:
+                                count += 1
+                                matches.append(skill_name)
+                                break
+            
+            # Also check text content
+            for tech in tech_list:
+                if tech in text:
+                    count += 1
+                    matches.append(tech)
+            
+            return count, list(set(matches))  # Remove duplicates
+        
+        frontend_count, frontend_matches = count_candidate_skills(frontend_techs, candidate_skills, combined_text)
+        backend_count, backend_matches = count_candidate_skills(backend_techs, candidate_skills, combined_text)
+        devops_count, devops_matches = count_candidate_skills(devops_techs, candidate_skills, combined_text)
+        data_count, data_matches = count_candidate_skills(data_techs, candidate_skills, combined_text)
+        mobile_count, mobile_matches = count_candidate_skills(mobile_techs, candidate_skills, combined_text)
+        
+        # Check for explicit fullstack indicators in candidate's profile
+        fullstack_explicit = any(indicator in combined_text for indicator in fullstack_indicators)
+        
+        logger.info(f"🔢 Candidate's tech analysis:")
+        logger.info(f"   Frontend: {frontend_count} skills - {frontend_matches[:3]}")
+        logger.info(f"   Backend: {backend_count} skills - {backend_matches[:3]}")
+        logger.info(f"   DevOps: {devops_count} skills - {devops_matches[:3]}")
+        logger.info(f"   Data: {data_count} skills - {data_matches[:3]}")
+        logger.info(f"   Mobile: {mobile_count} skills - {mobile_matches[:3]}")
+        logger.info(f"   Fullstack explicit: {fullstack_explicit}")
+        
+        # 🌟 IMPROVEMENT 3: Intelligent decision logic for candidate's role
+        
+        # Explicit fullstack indicators in their profile
+        if fullstack_explicit:
+            logger.info(f"🏆 FULLSTACK: Candidate explicitly mentions fullstack")
+            return "fullstack_developer"
+        
+        # Strong fullstack profile (good in both frontend and backend)
+        if frontend_count >= 3 and backend_count >= 3:
+            logger.info(f"🏆 FULLSTACK: Strong in both stacks (FE:{frontend_count}, BE:{backend_count})")
+            return "fullstack_developer"
+        
+        # Moderate fullstack profile 
+        if frontend_count >= 2 and backend_count >= 2:
+            logger.info(f"🏆 FULLSTACK: Moderate fullstack profile (FE:{frontend_count}, BE:{backend_count})")
+            return "fullstack_developer"
+        
+        # Data science specialization
+        if data_count >= 4:
+            logger.info(f"🏆 DATA_SCIENTIST: Strong data science skills ({data_count} matches)")
+            return "data_scientist"
+        
+        # Mobile development specialization
+        if mobile_count >= 3:
+            logger.info(f"🏆 MOBILE_DEVELOPER: Strong mobile development skills ({mobile_count} matches)")
+            return "mobile_developer"
+        
+        # DevOps specialization (but not if strong programming background)
+        if devops_count >= 4 and (frontend_count + backend_count) < 4:
+            logger.info(f"🏆 DEVOPS: Strong DevOps focus ({devops_count} matches)")
+            return "devops_engineer"
+        
+        # Backend specialization
+        if backend_count >= 4 and frontend_count < 2:
+            logger.info(f"🏆 BACKEND: Strong backend focus ({backend_count} matches)")
+            return "backend_developer"
+        
+        # Frontend specialization  
+        if frontend_count >= 4 and backend_count < 2:
+            logger.info(f"🏆 FRONTEND: Strong frontend focus ({frontend_count} matches)")
+            return "frontend_developer"
+        
+        # Default logic based on highest count
+        if backend_count > frontend_count:
+            logger.info(f"🏆 BACKEND: Backend dominant ({backend_count} vs {frontend_count})")
+            return "backend_developer"
+        elif frontend_count > backend_count:
+            logger.info(f"🏆 FRONTEND: Frontend dominant ({frontend_count} vs {backend_count})")
+            return "frontend_developer"
+        else:
+            # For equal counts, check for any fullstack indicators or default to fullstack
+            if frontend_count >= 1 and backend_count >= 1:
+                logger.info(f"🏆 FULLSTACK: Equal counts with both stacks present")
+                return "fullstack_developer"
+            else:
+                logger.info(f"🏆 GENERAL: Insufficient clear specialization")
+                return "general_developer"
     
     def _match_skills_with_intelligence(self, candidate_skills: List, required_skills: List, category: str) -> Dict[str, Any]:
         """🔍 Intelligent skill matching with synonyms and relationships"""
@@ -1144,6 +1378,7 @@ Overall Assessment: {"Strong candidate recommended for interview" if len(concern
         highest = max(degrees, key=lambda x: degree_levels.get(x.get("level", ""), 0))
         return highest.get("level")
     
+    
     # Continue with batch processing method...
     async def score_multiple_resumes(
         self,
@@ -1212,6 +1447,7 @@ Overall Assessment: {"Strong candidate recommended for interview" if len(concern
         
         logger.info(f"✅ Enhanced batch scoring completed: {successful_count}/{len(resume_data_list)} successful")
         return batch_result
+    
     
     def _analyze_role_distribution(self, results: List[Dict]) -> Dict[str, int]:
         """Analyze distribution of detected roles"""

@@ -214,10 +214,7 @@ class AIAnalyzer:
     
     def _detect_role_type_fixed(self, job_title: str, job_description: str, required_skills: dict = None) -> str:
         """
-        🎯 FIXED: Role detection that properly identifies Full Stack Developers
-        
-        This version addresses the issue where Full Stack developers were being 
-        misclassified as frontend developers.
+        🎯 IMPROVED: More accurate role detection with better text analysis
         """
         
         if not job_title:
@@ -226,133 +223,108 @@ class AIAnalyzer:
         combined_text = f"{job_title} {job_description}".lower()
         logger.info(f"🔍 Analyzing role for: '{job_title}' (text length: {len(combined_text)})")
         
-        # Initialize role scores
-        role_scores = {}
-        
-        # 🌟 PRIORITY 1: Check for explicit Full Stack indicators
-        fullstack_patterns = [
-            r"full\s*[-\s]*stack",
-            r"fullstack",
-            r"end[-\s]*to[-\s]*end",
-            r"frontend.*backend|backend.*frontend",
-            r"front[-\s]*end.*back[-\s]*end|back[-\s]*end.*front[-\s]*end",
-            r"ui.*api|api.*ui",
-            r"client.*server|server.*client",
-            r"both.*frontend.*backend|both.*backend.*frontend"
+        # 🌟 IMPROVEMENT 1: Enhanced technology detection with more comprehensive lists
+        frontend_techs = [
+            "react", "angular", "vue", "javascript", "typescript", "jsx", "tsx",
+            "html", "css", "scss", "sass", "bootstrap", "material-ui", "angular material",
+            "frontend", "front-end", "ui", "user interface", "responsive design"
         ]
         
-        fullstack_score = 0
-        fullstack_matches = []
+        backend_techs = [
+            "python", "django", "flask", "fastapi", "java", "spring", "spring boot",
+            "node.js", "nodejs", "express", "api", "rest", "restful", "graphql",
+            "backend", "back-end", "server-side", "microservices", "django rest framework",
+            "rest framework", "php", "laravel", "ruby", "rails", "go", "golang", ".net", "c#"
+        ]
         
-        for pattern in fullstack_patterns:
-            matches = re.findall(pattern, combined_text, re.IGNORECASE)
-            if matches:
-                fullstack_score += len(matches)
-                fullstack_matches.extend(matches)
+        fullstack_indicators = [
+            "full stack", "fullstack", "full-stack", "end-to-end", "end to end",
+            "frontend and backend", "backend and frontend", "front-end and back-end"
+        ]
         
-        # 🌟 PRIORITY 2: Technology stack analysis
-        frontend_techs = ["react", "angular", "vue", "javascript", "typescript", "css", "html"]
-        backend_techs = ["python", "django", "java", "spring", "api", "rest", "flask", "fastapi"]
-        devops_techs = ["docker", "kubernetes", "jenkins", "aws", "azure", "gcp", "terraform", "ansible"]
+        devops_techs = [
+            "docker", "kubernetes", "k8s", "jenkins", "aws", "azure", "gcp", "terraform", 
+            "ansible", "devops", "ci/cd", "infrastructure", "deployment", "containerization"
+        ]
         
-        # Count technology mentions
-        frontend_count = sum(1 for tech in frontend_techs if tech in combined_text)
-        backend_count = sum(1 for tech in backend_techs if tech in combined_text)
-        devops_count = sum(1 for tech in devops_techs if tech in combined_text)
+        data_techs = [
+            "python", "pandas", "numpy", "tensorflow", "pytorch", "scikit-learn", "machine learning",
+            "data science", "ml", "ai", "artificial intelligence", "jupyter", "spark"
+        ]
         
-        logger.info(f"🔢 Tech counts - Frontend: {frontend_count}, Backend: {backend_count}, DevOps: {devops_count}")
-        logger.info(f"🔢 FullStack score: {fullstack_score}, Matches: {fullstack_matches}")
+        # 🌟 IMPROVEMENT 2: Better counting with partial matches
+        def count_tech_mentions(tech_list, text):
+            count = 0
+            matches = []
+            for tech in tech_list:
+                if tech in text:
+                    count += 1
+                    matches.append(tech)
+            return count, matches
         
-        # 🎯 DECISION LOGIC
+        frontend_count, frontend_matches = count_tech_mentions(frontend_techs, combined_text)
+        backend_count, backend_matches = count_tech_mentions(backend_techs, combined_text)
+        devops_count, devops_matches = count_tech_mentions(devops_techs, combined_text)
+        data_count, data_matches = count_tech_mentions(data_techs, combined_text)
         
-        # If explicit Full Stack indicators found
-        if fullstack_score >= 1:
-            # Check if they have both frontend and backend skills
-            if frontend_count >= 1 and backend_count >= 2:
-                logger.info(f"🏆 FULLSTACK: Explicit indicators ({fullstack_score}) + Both stacks (FE:{frontend_count}, BE:{backend_count})")
-                return "fullstack_developer"
-            elif backend_count >= 2:
-                logger.info(f"🏆 FULLSTACK→BACKEND: Has fullstack title but stronger backend focus")
-                return "backend_developer"
-            else:
-                logger.info(f"🏆 FULLSTACK: Explicit indicators found, defaulting to fullstack")
-                return "fullstack_developer"
+        # Check for explicit fullstack indicators
+        fullstack_explicit = any(indicator in combined_text for indicator in fullstack_indicators)
         
-        # If no explicit fullstack but has both frontend and backend
-        if frontend_count >= 2 and backend_count >= 2:
+        logger.info(f"🔢 Tech analysis:")
+        logger.info(f"   Frontend: {frontend_count} matches {frontend_matches[:3]}")
+        logger.info(f"   Backend: {backend_count} matches {backend_matches[:3]}")
+        logger.info(f"   DevOps: {devops_count} matches {devops_matches[:3]}")
+        logger.info(f"   Data: {data_count} matches {data_matches[:3]}")
+        logger.info(f"   Fullstack explicit: {fullstack_explicit}")
+        
+        # 🌟 IMPROVEMENT 3: More intelligent decision logic
+        
+        # Explicit fullstack indicators trump everything
+        if fullstack_explicit:
+            logger.info(f"🏆 FULLSTACK: Explicit fullstack indicators found")
+            return "fullstack_developer"
+        
+        # Strong fullstack profile (good in both frontend and backend)
+        if frontend_count >= 3 and backend_count >= 3:
             logger.info(f"🏆 FULLSTACK: Strong in both stacks (FE:{frontend_count}, BE:{backend_count})")
             return "fullstack_developer"
         
-        # Check for role-specific patterns
-        role_patterns = {
-            "backend_developer": [
-                r"backend|back[-\s]*end",
-                r"api\s+development",
-                r"server[-\s]*side",
-                r"database.*design",
-                r"microservices",
-                r"rest.*api|restful",
-            ],
-            "frontend_developer": [
-                r"frontend|front[-\s]*end",
-                r"ui/ux",
-                r"user\s+interface",
-                r"responsive\s+design",
-                r"single\s+page\s+application",
-                r"component.*development"
-            ],
-            "devops_engineer": [
-                r"devops|dev\s+ops",
-                r"infrastructure",
-                r"deployment",
-                r"ci/cd|continuous\s+integration",
-                r"containerization",
-                r"orchestration",
-                r"infrastructure.*code"
-            ]
-        }
+        # Moderate fullstack profile 
+        if frontend_count >= 2 and backend_count >= 2:
+            logger.info(f"🏆 FULLSTACK: Moderate fullstack profile (FE:{frontend_count}, BE:{backend_count})")
+            return "fullstack_developer"
         
-        # Calculate pattern-based scores
-        for role, patterns in role_patterns.items():
-            pattern_score = sum(1 for pattern in patterns if re.search(pattern, combined_text, re.IGNORECASE))
-            role_scores[role] = pattern_score
+        # Data science specialization
+        if data_count >= 4:
+            logger.info(f"🏆 DATA_SCIENTIST: Strong data science focus ({data_count} matches)")
+            return "data_scientist"
         
-        # Add technology-based bonuses
-        role_scores["frontend_developer"] += frontend_count
-        role_scores["backend_developer"] += backend_count
-        role_scores["devops_engineer"] += devops_count
+        # DevOps specialization (but not if strong programming background)
+        if devops_count >= 4 and (frontend_count + backend_count) < 4:
+            logger.info(f"🏆 DEVOPS: Strong DevOps focus ({devops_count} matches)")
+            return "devops_engineer"
         
-        # 🚫 DEVOPS PENALTY: Don't over-classify as DevOps
-        # Reduce DevOps score if person has strong programming background
-        if backend_count >= 2 or frontend_count >= 2:
-            role_scores["devops_engineer"] = max(0, role_scores["devops_engineer"] - 2)
-            logger.info(f"📉 DevOps penalty applied due to strong programming background")
-        
-        # Find the best role
-        if role_scores:
-            sorted_roles = sorted(role_scores.items(), key=lambda x: x[1], reverse=True)
-            best_role, best_score = sorted_roles[0]
-            
-            logger.info(f"🎯 Final scores: {dict(sorted_roles)}")
-            
-            if best_score >= 2:
-                logger.info(f"🏆 Selected: {best_role} (score: {best_score})")
-                return best_role
-        
-        # 🔄 FALLBACK LOGIC
-        # If primarily backend technologies, default to backend
-        if backend_count > frontend_count and backend_count >= 2:
-            logger.info(f"🏆 FALLBACK→BACKEND: Backend tech dominance ({backend_count} vs {frontend_count})")
+        # Backend specialization
+        if backend_count >= 4 and frontend_count < 2:
+            logger.info(f"🏆 BACKEND: Strong backend focus ({backend_count} matches)")
             return "backend_developer"
         
-        # If primarily frontend technologies, default to frontend
-        if frontend_count > backend_count and frontend_count >= 2:
-            logger.info(f"🏆 FALLBACK→FRONTEND: Frontend tech dominance ({frontend_count} vs {backend_count})")
+        # Frontend specialization  
+        if frontend_count >= 4 and backend_count < 2:
+            logger.info(f"🏆 FRONTEND: Strong frontend focus ({frontend_count} matches)")
             return "frontend_developer"
         
-        # Ultimate fallback
-        logger.info(f"🏆 FALLBACK→DEFAULT: No clear winner")
-        return "backend_developer"  # Safe default for most developer positions
+        # Default logic based on highest count
+        if backend_count > frontend_count:
+            logger.info(f"🏆 BACKEND: Backend dominant ({backend_count} vs {frontend_count})")
+            return "backend_developer"
+        elif frontend_count > backend_count:
+            logger.info(f"🏆 FRONTEND: Frontend dominant ({frontend_count} vs {backend_count})")
+            return "frontend_developer"
+        else:
+            # Equal or both low - default to backend for most developer positions
+            logger.info(f"🏆 DEFAULT: Equal counts, defaulting to backend")
+            return "backend_developer"
 
 
     # 🎯 Also need to adjust DevOps weights to not over-penalize Python/Django
@@ -1010,170 +982,190 @@ class AIAnalyzer:
             }
     
     async def analyze_resume_content(self, resume_text: str, job_analysis: Optional[Dict] = None) -> Dict[str, Any]:
-        """Keep original method for compatibility"""
+        """Improved resume analysis with better JSON structure and more detailed prompts"""
         
         job_context = ""
         if job_analysis:
             job_context = f"""
 
-JOB CONTEXT: This resume is being evaluated for a position requiring:
-- Technical Skills: {job_analysis.get('required_skills', {})}
-- Experience Level: {job_analysis.get('minimum_experience', 'Not specified')} years
-- Education: {job_analysis.get('education_requirements', {})}
-- Seniority: {job_analysis.get('seniority_level', 'Not specified')}
-"""
+    JOB CONTEXT: This resume is being evaluated for a position requiring:
+    - Technical Skills: {job_analysis.get('required_skills', {})}
+    - Experience Level: {job_analysis.get('minimum_experience', 'Not specified')} years
+    - Education: {job_analysis.get('education_requirements', {})}
+    - Seniority: {job_analysis.get('seniority_level', 'Not specified')}
+    """
         
         prompt = f"""
-Analyze this resume with enhanced detail and intelligence. Return ONLY a valid JSON object:
+    You are an expert technical recruiter analyzing a software developer's resume. Extract information accurately and return ONLY a properly formatted JSON object with NO additional text before or after.
 
-Resume Text:
-{resume_text}
-{job_context}
+    Resume Content:
+    {resume_text}
+    {job_context}
 
-Return exactly this JSON structure:
-{{
-    "candidate_summary": "2-3 sentence professional summary of the candidate",
-    "contact_info": {{
-        "name": "full name or null",
-        "email": "email address or null",
-        "phone": "phone number or null",
-        "linkedin": "linkedin profile or null",
-        "location": "city, state/country or null",
-        "portfolio": "portfolio website or null"
-    }},
-    "skills_by_category": {{
-        "programming_languages": [
-            {{"name": "Python", "proficiency": "expert/advanced/intermediate/beginner", "years_experience": 3}}
-        ],
-        "web_frameworks": [
-            {{"name": "React", "proficiency": "advanced", "years_experience": 2}}
-        ],
-        "databases": [
-            {{"name": "PostgreSQL", "proficiency": "intermediate", "years_experience": 1}}
-        ],
-        "cloud_platforms": [...],
-        "devops_tools": [...],
-        "data_tools": [...],
-        "frontend_tools": [...],
-        "mobile_development": [...],
-        "testing_tools": [...],
-        "version_control": [...],
-        "project_management": [...],
-        "other_technical": [...],
-        "soft_skills": [
-            {{"name": "Leadership", "evidence": "Led team of 5 developers"}}
-        ]
-    }},
-    "experience_analysis": {{
-        "total_years": number_of_years_total_experience,
-        "relevant_years": number_of_years_relevant_to_job,
-        "career_progression": "junior_to_mid/mid_to_senior/senior_to_lead/lateral/unclear",
-        "industry_experience": ["fintech", "healthcare", "e-commerce", etc.],
-        "role_types": ["individual_contributor", "team_lead", "manager", "director"],
-        "company_sizes": ["startup", "mid_size", "enterprise"],
-        "current_level": "junior/mid/senior/lead/principal/director"
-    }},
-    "work_history": [
-        {{
-            "company": "company name",
-            "title": "job title",
-            "start_date": "YYYY-MM or YYYY",
-            "end_date": "YYYY-MM or present",
-            "duration_months": number_of_months,
-            "key_achievements": ["quantified achievements with impact"],
-            "technologies_used": ["tech stack used in this role"],
-            "team_size": "size of team or null",
-            "role_type": "individual_contributor/team_lead/manager"
-        }}
-    ],
-    "education": {{
-        "degrees": [
+    CRITICAL: Return ONLY the JSON object below. No explanations, no markdown, no code blocks, just the raw JSON:
+
+    {{
+        "candidate_summary": "Brief 2-3 sentence professional summary",
+        "contact_info": {{
+            "name": "Full name or null",
+            "email": "Email address or null", 
+            "phone": "Phone number or null",
+            "linkedin": "LinkedIn profile or null",
+            "location": "City, State/Country or null",
+            "portfolio": "Portfolio website or null"
+        }},
+        "skills_by_category": {{
+            "programming_languages": [
+                {{"name": "Python", "proficiency": "advanced", "years_experience": 2}},
+                {{"name": "JavaScript", "proficiency": "intermediate", "years_experience": 1}}
+            ],
+            "web_frameworks": [
+                {{"name": "Django", "proficiency": "advanced", "years_experience": 2}},
+                {{"name": "React", "proficiency": "intermediate", "years_experience": 1}}
+            ],
+            "databases": [
+                {{"name": "MySQL", "proficiency": "intermediate", "years_experience": 1}}
+            ],
+            "cloud_platforms": [
+                {{"name": "AWS", "proficiency": "beginner", "years_experience": 1}}
+            ],
+            "devops_tools": [
+                {{"name": "Docker", "proficiency": "beginner", "years_experience": 1}}
+            ],
+            "data_tools": [],
+            "frontend_tools": [
+                {{"name": "HTML", "proficiency": "advanced", "years_experience": 2}},
+                {{"name": "CSS", "proficiency": "advanced", "years_experience": 2}}
+            ],
+            "mobile_development": [],
+            "testing_tools": [],
+            "version_control": [
+                {{"name": "Git", "proficiency": "intermediate", "years_experience": 2}}
+            ],
+            "project_management": [],
+            "other_technical": [],
+            "soft_skills": [
+                {{"name": "Team collaboration", "evidence": "Worked in Scrum teams"}},
+                {{"name": "Problem solving", "evidence": "Resolved complex backend issues"}}
+            ]
+        }},
+        "experience_analysis": {{
+            "total_years": 2.5,
+            "relevant_years": 2.5,
+            "career_progression": "junior_to_mid",
+            "industry_experience": ["healthcare", "technology"],
+            "role_types": ["individual_contributor"],
+            "company_sizes": ["mid_size"],
+            "current_level": "mid"
+        }},
+        "work_history": [
             {{
-                "level": "Bachelor's/Master's/PhD",
-                "field": "Computer Science",
-                "institution": "university name",
-                "graduation_year": "YYYY",
-                "gpa": "3.8/4.0 or null",
-                "relevant_coursework": ["relevant courses"]
+                "company": "Company Name",
+                "title": "Full Stack Developer", 
+                "start_date": "2024-08",
+                "end_date": "present",
+                "duration_months": 6,
+                "key_achievements": [
+                    "Developed cloud-based automated system for insurance eligibility checks",
+                    "Integrated frontend with backend APIs for real-time functionality"
+                ],
+                "technologies_used": ["Python", "React", "AWS Lambda", "Twilio"],
+                "team_size": null,
+                "role_type": "individual_contributor"
             }}
         ],
-        "certifications": [
+        "education": {{
+            "degrees": [
+                {{
+                    "level": "Bachelor's",
+                    "field": "Computer Science", 
+                    "institution": "University Name",
+                    "graduation_year": "2022",
+                    "gpa": null,
+                    "relevant_coursework": ["Data Structures", "Algorithms"]
+                }}
+            ],
+            "certifications": []
+        }},
+        "projects": [
             {{
-                "name": "AWS Certified Solutions Architect",
-                "issuer": "Amazon Web Services",
-                "date": "YYYY-MM",
-                "expiry": "YYYY-MM or null"
+                "name": "Project Name",
+                "description": "Brief description of what it does",
+                "technologies": ["Python", "Django", "React"],
+                "role": "Full Stack Developer",
+                "impact": "Automated insurance eligibility checks"
             }}
-        ]
-    }},
-    "projects": [
-        {{
-            "name": "project name",
-            "description": "what the project does",
-            "technologies": ["tech stack used"],
-            "role": "your role in the project",
-            "impact": "quantified impact or outcome"
+        ],
+        "achievements": [],
+        "resume_quality": {{
+            "formatting_score": 75,
+            "completeness_score": 80,
+            "quantification_score": 60,
+            "ats_friendly": true,
+            "keyword_optimization": 70,
+            "overall_quality": 75,
+            "improvement_suggestions": [
+                "Add more quantified achievements",
+                "Include specific metrics and numbers"
+            ]
+        }},
+        "leadership_indicators": {{
+            "has_leadership_experience": false,
+            "team_sizes_managed": [],
+            "leadership_skills": [],
+            "leadership_evidence": []
+        }},
+        "career_insights": {{
+            "specializations": ["Full Stack Development", "Web Applications"],
+            "career_trajectory": "ascending",
+            "job_stability": "stable",
+            "learning_attitude": "continuous_learner",
+            "innovation_indicators": ["Built automated systems", "Cloud integration"],
+            "remote_work_experience": true
         }}
-    ],
-    "achievements": [
-        {{
-            "title": "achievement title",
-            "description": "achievement description",
-            "impact": "quantified impact",
-            "date": "YYYY or null"
-        }}
-    ],
-    "resume_quality": {{
-        "formatting_score": score_0_to_100,
-        "completeness_score": score_0_to_100,
-        "quantification_score": score_0_to_100,
-        "ats_friendly": true_or_false,
-        "keyword_optimization": score_0_to_100,
-        "overall_quality": score_0_to_100,
-        "improvement_suggestions": ["specific suggestions for resume improvement"]
-    }},
-    "leadership_indicators": {{
-        "has_leadership_experience": true_or_false,
-        "team_sizes_managed": [5, 3, 12],
-        "leadership_skills": ["mentoring", "project management", "strategic planning"],
-        "leadership_evidence": ["specific examples of leadership"]
-    }},
-    "career_insights": {{
-        "specializations": ["areas of expertise"],
-        "career_trajectory": "ascending/stable/transitioning/unclear",
-        "job_stability": "stable/frequent_changes/gap_periods",
-        "learning_attitude": "continuous_learner/specialized/traditional",
-        "innovation_indicators": ["open source contributions", "patents", "side projects"],
-        "remote_work_experience": true_or_false
     }}
-}}
 
-Analysis Guidelines:
-- Extract skills with proficiency levels based on context clues
-- Estimate experience years for each skill from job history
-- Identify quantified achievements (numbers, percentages, impact)
-- Assess resume quality and ATS-friendliness
-- Analyze career progression and growth trajectory
-- Look for leadership and innovation indicators
-- Use null for missing information
-- Be specific and evidence-based in assessments
-- Return only the JSON, no other text
-"""
-        
+    EXTRACTION GUIDELINES:
+    - For skills: Estimate proficiency based on project complexity and duration
+    - For years_experience: Calculate from work history and project involvement  
+    - Use "beginner" (0-1 year), "intermediate" (1-3 years), "advanced" (3-5 years), "expert" (5+ years)
+    - Extract specific technologies mentioned in projects
+    - Look for quantified achievements (numbers, percentages, scale)
+    - Identify soft skills from project descriptions and responsibilities
+    - Calculate total experience from work history dates
+    - Use null for missing information, never leave fields empty
+
+    Return ONLY the JSON object. No other text whatsoever."""
+
         try:
             if not self.model:
                 raise Exception("Google Gemini not initialized. Check your API key.")
             
             response = await self._call_gemini(prompt)
             
+            # Clean the response to extract only JSON
+            response_clean = response.strip()
+            
+            # Remove any markdown code blocks if present
+            if response_clean.startswith('```json'):
+                response_clean = response_clean[7:]
+            if response_clean.startswith('```'):
+                response_clean = response_clean[3:]
+            if response_clean.endswith('```'):
+                response_clean = response_clean[:-3]
+            
+            response_clean = response_clean.strip()
+            
             try:
-                resume_analysis = json.loads(response)
+                resume_analysis = json.loads(response_clean)
                 logger.info("✅ Enhanced resume analyzed successfully")
                 return resume_analysis
-            except json.JSONDecodeError:
-                logger.warning("Response wasn't valid JSON, attempting to extract")
-                return self._extract_json_from_response(response)
-                
+            except json.JSONDecodeError as e:
+                logger.warning(f"JSON decode error: {e}")
+                logger.warning(f"Response content: {response_clean[:500]}...")
+                # Try to extract JSON from response
+                return self._extract_json_from_response(response_clean)
+                    
         except Exception as e:
             logger.error(f"❌ Error analyzing resume: {str(e)}")
             raise Exception(f"Failed to analyze resume: {str(e)}")
