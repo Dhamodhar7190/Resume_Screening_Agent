@@ -220,7 +220,7 @@ dist
 
 # Gatsby files
 .cache/
-public
+# public  # Commented out - we want to track the React public folder
 
 # Storybook build outputs
 .out
