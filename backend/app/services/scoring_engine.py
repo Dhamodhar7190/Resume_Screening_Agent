@@ -245,27 +245,59 @@ class ScoringEngine:
         
         try:
             # Step 1: Enhanced resume analysis with job context
+            logger.info(f"🔍 Calling AI analyzer for resume analysis: {filename}")
             resume_analysis = await self.ai_analyzer.analyze_resume_content(
                 resume_text, 
                 job_analysis
             )
+            logger.info(f"📋 AI analyzer returned type: {type(resume_analysis)}")
+            
+            # Defensive programming: Ensure resume_analysis is a dictionary
+            if not isinstance(resume_analysis, dict):
+                logger.error(f"❌ Resume analysis returned unexpected type: {type(resume_analysis)}")
+                logger.error(f"Content: {str(resume_analysis)[:500]}...")
+                raise Exception(f"Resume analysis returned {type(resume_analysis)} instead of dict")
+                
+            logger.info(f"📋 Resume analysis keys: {list(resume_analysis.keys())}")
+                
+            # Ensure required keys exist with default values
+            if "skills_by_category" not in resume_analysis:
+                resume_analysis["skills_by_category"] = {}
+            if "experience_analysis" not in resume_analysis:
+                resume_analysis["experience_analysis"] = {"total_years": 0, "relevant_years": 0, "current_level": "unknown"}
+            if "contact_info" not in resume_analysis:
+                resume_analysis["contact_info"] = {"name": "Unknown"}
+            if "work_history" not in resume_analysis:
+                resume_analysis["work_history"] = []
             
             # Step 2: Detect role type for intelligent weighting
             detected_role = self._detect_role_type(job_analysis, resume_analysis)
             logger.info(f"📊 Detected role: {detected_role}")
             
             # Step 3: Enhanced skill matching with intelligence
-            skills_scoring = await self._score_enhanced_skills_match(
-                resume_analysis, 
-                job_analysis, 
-                detected_role
-            )
+            try:
+                logger.info(f"🔍 Starting skill matching for {filename}")
+                skills_scoring = await self._score_enhanced_skills_match(
+                    resume_analysis, 
+                    job_analysis, 
+                    detected_role
+                )
+                logger.info(f"✅ Skill matching completed for {filename}")
+            except Exception as e:
+                logger.error(f"❌ Error in skill matching for {filename}: {str(e)}")
+                raise Exception(f"Skill matching failed: {str(e)}")
             
             # Step 4: Enhanced experience evaluation with quality analysis
-            experience_scoring = await self._score_enhanced_experience(
-                resume_analysis, 
-                job_analysis
-            )
+            try:
+                logger.info(f"🔍 Starting experience scoring for {filename}")
+                experience_scoring = await self._score_enhanced_experience(
+                    resume_analysis, 
+                    job_analysis
+                )
+                logger.info(f"✅ Experience scoring completed for {filename}")
+            except Exception as e:
+                logger.error(f"❌ Error in experience scoring for {filename}: {str(e)}")
+                raise Exception(f"Experience scoring failed: {str(e)}")
             
             # Step 5: Education and certification scoring
             education_scoring = self._score_education_match(
@@ -404,8 +436,19 @@ class ScoringEngine:
     async def _score_enhanced_skills_match(self, resume_analysis: Dict[str, Any], job_analysis: Dict[str, Any], detected_role: str) -> Dict[str, Any]:
         """🧠 IMPROVED: Enhanced skill matching with better role-specific weighting"""
         
+        # Defensive checks
+        if not isinstance(resume_analysis, dict):
+            raise Exception(f"resume_analysis is {type(resume_analysis)}, expected dict")
+        if not isinstance(job_analysis, dict):
+            raise Exception(f"job_analysis is {type(job_analysis)}, expected dict")
+            
         required_skills = job_analysis.get("required_skills", {})
         candidate_skills = resume_analysis.get("skills_by_category", {})
+        
+        # Ensure candidate_skills is a dict
+        if not isinstance(candidate_skills, dict):
+            logger.warning(f"candidate_skills is {type(candidate_skills)}, expected dict. Setting to empty dict.")
+            candidate_skills = {}
         
         # Get role-specific weights
         role_weights = self._get_role_specific_weights_fixed(detected_role)
