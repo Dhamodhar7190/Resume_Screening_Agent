@@ -508,10 +508,11 @@ class ScoringEngine:
         # Get candidate's skills from resume analysis
         candidate_skills = resume_analysis.get("skills_by_category", {})
         work_history = resume_analysis.get("work_history", [])
-        candidate_summary = resume_analysis.get("candidate_summary", "").lower()
+        candidate_summary = resume_analysis.get("candidate_summary") or ""
+        candidate_summary = candidate_summary.lower() if candidate_summary else ""
         
         # Extract job titles from work history
-        job_titles = " ".join([job.get("title", "").lower() for job in work_history])
+        job_titles = " ".join([job.get("title", "").lower() for job in work_history if job.get("title")])
         combined_text = f"{candidate_summary} {job_titles}".lower()
         
         logger.info(f"🎯 Analyzing candidate's role based on their skills and experience")
@@ -561,9 +562,9 @@ class ScoringEngine:
                 if isinstance(skills_list, list):
                     for skill_item in skills_list:
                         if isinstance(skill_item, dict):
-                            skill_name = skill_item.get("name", "").lower()
+                            skill_name = (skill_item.get("name") or "").lower()
                         else:
-                            skill_name = str(skill_item).lower()
+                            skill_name = str(skill_item or "").lower()
                         
                         for tech in tech_list:
                             if tech in skill_name or skill_name in tech:
@@ -665,14 +666,18 @@ class ScoringEngine:
         candidate_normalized = {}
         for skill_item in candidate_skills:
             if isinstance(skill_item, dict):
-                name = skill_item.get("name", "")
-                proficiency = skill_item.get("proficiency", "intermediate")
-                years = skill_item.get("years_experience", 0)
+                name = skill_item.get("name") or ""
+                proficiency = skill_item.get("proficiency") or "intermediate"
+                years = skill_item.get("years_experience", 0) or 0
             else:
-                name = str(skill_item)
+                name = str(skill_item or "")
                 proficiency = "intermediate"
                 years = 0
             
+            # Skip empty skill names
+            if not name.strip():
+                continue
+                
             # Normalize skill name for matching
             normalized = self._normalize_skill(name)
             candidate_normalized[normalized] = {
@@ -778,6 +783,9 @@ class ScoringEngine:
     def _normalize_skill(self, skill: str) -> str:
         """🔄 Normalize skill names using intelligence database"""
         
+        if not skill:
+            return ""
+            
         skill_lower = skill.lower().strip()
         
         # Check synonyms database
@@ -1245,8 +1253,8 @@ class ScoringEngine:
             
             # Field of study bonus
             if required_field:
-                candidate_field = highest_degree.get("field", "").lower()
-                if any(field.lower() in candidate_field for field in required_field):
+                candidate_field = (highest_degree.get("field") or "").lower()
+                if any(field.lower() in candidate_field for field in required_field if field):
                     education_score += 20
         else:
             # No degree
@@ -1258,11 +1266,11 @@ class ScoringEngine:
         # Certification scoring
         cert_score = 0
         if required_certs and candidate_certs:
-            cert_names = [cert.get("name", "").lower() for cert in candidate_certs]
+            cert_names = [(cert.get("name") or "").lower() for cert in candidate_certs if cert.get("name")]
             matched_certs = 0
             
             for req_cert in required_certs:
-                if any(req_cert.lower() in cert_name for cert_name in cert_names):
+                if req_cert and any(req_cert.lower() in cert_name for cert_name in cert_names if cert_name):
                     matched_certs += 1
             
             if len(required_certs) > 0:
@@ -1274,7 +1282,7 @@ class ScoringEngine:
             "score": final_score,
             "degree_score": education_score,
             "certification_score": cert_score,
-            "matched_certifications": len([c for c in candidate_certs if any(req.lower() in c.get("name", "").lower() for req in required_certs)]),
+            "matched_certifications": len([c for c in candidate_certs if c.get("name") and any(req.lower() in (c.get("name") or "").lower() for req in required_certs if req)]),
             "total_certifications": len(candidate_certs)
         }
     

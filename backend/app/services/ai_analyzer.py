@@ -1212,10 +1212,55 @@ class AIAnalyzer:
                 raise Exception("No valid JSON found in AI response")
         except Exception as e:
             logger.error(f"Failed to extract JSON from response: {str(e)}")
+            # Return a proper fallback structure that matches expected resume analysis format
             return {
-                "error": "Failed to parse enhanced AI response", 
-                "raw_response": response[:300] + "..." if len(response) > 300 else response,
-                "message": "The AI returned invalid JSON format"
+                "contact_info": {
+                    "name": "Unknown",
+                    "email": None,
+                    "phone": None,
+                    "linkedin": None,
+                    "location": None
+                },
+                "skills_by_category": {
+                    "programming_languages": [],
+                    "web_frameworks": [],
+                    "databases": [],
+                    "cloud_platforms": [],
+                    "devops_tools": [],
+                    "frontend_tools": [],
+                    "testing_tools": [],
+                    "version_control": [],
+                    "soft_skills": []
+                },
+                "work_history": [],
+                "education": {
+                    "degrees": [],
+                    "certifications": []
+                },
+                "projects": [],
+                "experience_analysis": {
+                    "total_years": 0,
+                    "relevant_years": 0,
+                    "current_level": "unknown"
+                },
+                "candidate_summary": f"Failed to parse AI response. Raw response: {response[:200]}...",
+                "resume_quality": {
+                    "overall_quality": 30,
+                    "formatting_score": 30,
+                    "completeness_score": 30
+                },
+                "leadership_indicators": {
+                    "has_leadership_experience": False,
+                    "team_sizes_managed": [],
+                    "leadership_skills": []
+                },
+                "career_insights": {
+                    "specializations": [],
+                    "career_trajectory": "unknown",
+                    "job_stability": "unknown"
+                },
+                "parsing_error": True,
+                "error_message": str(e)
             }
     
     def _get_timestamp(self) -> str:

@@ -1,5 +1,8 @@
 from fastapi import FastAPI, APIRouter, HTTPException, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import mimetypes
 from app.services.document_parser import DocumentParser
 from app.services.ai_analyzer import AIAnalyzer
 from app.services.scoring_engine import ScoringEngine
@@ -8,6 +11,7 @@ from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 import logging
 import json
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -302,3 +306,91 @@ async def test_config():
         "upload_dir": settings.upload_dir,
         "debug": settings.debug
     }
+
+# Debug endpoint to see static directory structure
+@app.get("/debug-static")
+async def debug_static():
+    def list_directory(path):
+        result = {}
+        if os.path.exists(path):
+            for item in os.listdir(path):
+                item_path = os.path.join(path, item)
+                if os.path.isdir(item_path):
+                    result[f"{item}/"] = list_directory(item_path)
+                else:
+                    result[item] = f"file ({os.path.getsize(item_path)} bytes)"
+        return result
+    
+    return {
+        "static_dir": "/app/static",
+        "exists": os.path.exists("/app/static"),
+        "contents": list_directory("/app/static") if os.path.exists("/app/static") else "Directory not found"
+    }
+
+# Mount static files (React frontend)
+static_dir = "/app/static"
+logger.info(f"Looking for static files in: {static_dir}")
+logger.info(f"Static directory exists: {os.path.exists(static_dir)}")
+
+if os.path.exists(static_dir):
+    # List contents of static directory for debugging
+    try:
+        static_contents = os.listdir(static_dir)
+        logger.info(f"Static directory contents: {static_contents}")
+    except Exception as e:
+        logger.error(f"Error listing static directory: {e}")
+    
+    # Don't mount /static separately - handle all routes through our handler
+    
+    # Serve React app for all non-API routes
+    @app.get("/{full_path:path}")
+    async def serve_react_app(full_path: str):
+        logger.info(f"Serving route: {full_path}")
+        
+        # Don't serve React app for API routes
+        if full_path.startswith("api/") or full_path in ["health", "docs", "openapi.json", "redoc"]:
+            raise HTTPException(status_code=404, detail="Not found")
+        
+        # Handle static/ prefixed requests by removing the static/ prefix
+        if full_path.startswith("static/"):
+            full_path = full_path[7:]  # Remove 'static/' prefix
+        
+        # Try to serve static files first (CSS, JS, images, etc.)
+        # First try the direct path
+        static_file_path = os.path.join(static_dir, full_path)
+        logger.info(f"Looking for static file: {static_file_path}")
+        
+        # If not found, try with extra 'static/' prefix (React build puts files in static/static/)
+        if not os.path.exists(static_file_path):
+            static_file_path = os.path.join(static_dir, "static", full_path)
+            logger.info(f"Trying with static/ prefix: {static_file_path}")
+        
+        logger.info(f"File exists: {os.path.exists(static_file_path)}")
+        
+        if os.path.exists(static_file_path) and os.path.isfile(static_file_path):
+            # Determine the correct media type
+            media_type, _ = mimetypes.guess_type(static_file_path)
+            logger.info(f"Serving file: {static_file_path} with media type: {media_type}")
+            return FileResponse(static_file_path, media_type=media_type)
+        
+        # If no static file found, serve index.html (React Router will handle routing)
+        index_file = os.path.join(static_dir, "index.html")
+        logger.info(f"Looking for index.html at: {index_file}")
+        logger.info(f"Index file exists: {os.path.exists(index_file)}")
+        
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
+        else:
+            raise HTTPException(status_code=404, detail="Frontend not found")
+else:
+    logger.error(f"Static directory not found: {static_dir}")
+    
+    @app.get("/")
+    async def root():
+        return {
+            "message": "Resume Screening AI Backend", 
+            "static_dir": static_dir,
+            "static_exists": os.path.exists(static_dir),
+            "current_dir": os.getcwd(),
+            "dir_contents": os.listdir("/app") if os.path.exists("/app") else []
+        }
