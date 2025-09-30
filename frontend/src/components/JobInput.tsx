@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Brain, 
-  Sparkles, 
-  ChevronRight, 
-  AlertCircle, 
-  Wand2, 
-  CheckCircle2, 
+import {
+  Brain,
+  Sparkles,
+  ChevronRight,
+  AlertCircle,
+  Wand2,
+  CheckCircle2,
   ArrowRight,
   RefreshCw,
   Eye,
-  EyeOff
+  EyeOff,
+  FileText,
+  Type,
+  Upload
 } from 'lucide-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import JobDescriptionUpload from './JobDescriptionUpload';
 
 interface JobInputProps {
   jobDescription: string;
@@ -35,6 +39,9 @@ const JobInput: React.FC<JobInputProps> = ({
   const [enhancementResult, setEnhancementResult] = useState<any>(null);
   const [showEnhancementPreview, setShowEnhancementPreview] = useState(false);
   const [useAIEnhancement, setUseAIEnhancement] = useState(true);
+
+  // 🌟 NEW: Input method selection
+  const [inputMethod, setInputMethod] = useState<'manual' | 'file'>('manual');
 
   // 🌟 NEW: AI Enhancement Function
   const handleEnhanceJobDescription = async () => {
@@ -87,6 +94,15 @@ const JobInput: React.FC<JobInputProps> = ({
         icon: '🎯'
       });
     }
+  };
+
+  // 🌟 NEW: Handle job description from file upload
+  const handleJobDescriptionFromFile = (description: string, title: string) => {
+    setJobDescription(description);
+    setJobTitle(title);
+    // Clear any existing enhancement results since we have new content
+    setEnhancementResult(null);
+    setShowEnhancementPreview(false);
   };
 
   // Enhanced Analysis Function
@@ -168,12 +184,53 @@ const JobInput: React.FC<JobInputProps> = ({
           Describe Your Perfect Candidate
         </h2>
         <p className="text-lg text-gray-600">
-          Enter the job description and let our enhanced AI extract and optimize the requirements
+          Enter the job description manually or upload a file and let our enhanced AI extract and optimize the requirements
         </p>
       </motion.div>
 
       <div className="card">
         <div className="space-y-6">
+          {/* 🌟 NEW: Input Method Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              How would you like to provide the job description?
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <motion.button
+                onClick={() => setInputMethod('manual')}
+                className={`p-4 rounded-xl border-2 transition-all duration-200 flex items-center space-x-3 ${
+                  inputMethod === 'manual'
+                    ? 'border-primary-500 bg-primary-50 text-primary-900'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-primary-300 hover:bg-primary-50'
+                }`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Type className="w-6 h-6" />
+                <div className="text-left">
+                  <p className="font-medium">Type Manually</p>
+                  <p className="text-sm opacity-75">Enter or paste job description text</p>
+                </div>
+              </motion.button>
+
+              <motion.button
+                onClick={() => setInputMethod('file')}
+                className={`p-4 rounded-xl border-2 transition-all duration-200 flex items-center space-x-3 ${
+                  inputMethod === 'file'
+                    ? 'border-purple-500 bg-purple-50 text-purple-900'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50'
+                }`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Upload className="w-6 h-6" />
+                <div className="text-left">
+                  <p className="font-medium">Upload File</p>
+                  <p className="text-sm opacity-75">PDF, DOC, or DOCX file</p>
+                </div>
+              </motion.button>
+            </div>
+          </div>
           {/* Job Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -188,8 +245,17 @@ const JobInput: React.FC<JobInputProps> = ({
             />
           </div>
 
-          {/* Job Description with Enhancement */}
-          <div>
+          {/* 🌟 NEW: Conditional content based on input method */}
+          {inputMethod === 'file' ? (
+            <JobDescriptionUpload
+              onJobAnalyzed={onJobAnalyzed}
+              onJobDescriptionExtracted={handleJobDescriptionFromFile}
+              className="my-6"
+            />
+          ) : (
+            <>
+              {/* Job Description with Enhancement */}
+              <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-medium text-gray-700">
                 Job Description *
@@ -347,11 +413,11 @@ const JobInput: React.FC<JobInputProps> = ({
                   </button>
                 </div>
               </motion.div>
-            )}
-          </AnimatePresence>
+              )}
+            </AnimatePresence>
 
-          {/* Sample Jobs */}
-          <div>
+            {/* Sample Jobs */}
+            <div>
             <h3 className="text-sm font-medium text-gray-700 mb-3">
               Try a sample job description:
             </h3>
@@ -376,10 +442,13 @@ const JobInput: React.FC<JobInputProps> = ({
                 </button>
               ))}
             </div>
-          </div>
+            </div>
+            </>
+          )}
 
-          {/* Enhanced Analyze Button */}
-          <div className="flex items-center justify-center pt-4">
+          {/* Enhanced Analyze Button - Only show in manual mode */}
+          {inputMethod === 'manual' && (
+            <div className="flex items-center justify-center pt-4">
             <motion.button
               onClick={handleAnalyzeJob}
               disabled={isAnalyzing || !jobDescription.trim()}
@@ -411,22 +480,39 @@ const JobInput: React.FC<JobInputProps> = ({
                 </>
               )}
             </motion.button>
-          </div>
+            </div>
+          )}
 
-          {/* 🌟 NEW: Enhancement Info Box */}
+          {/* 🌟 NEW: Enhancement Info Box - Show for both modes */}
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4 flex items-start space-x-3">
             <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
             <div className="text-sm text-blue-800">
-              <p className="font-medium mb-1">🚀 Enhanced AI Analysis</p>
+              <p className="font-medium mb-1">
+                {inputMethod === 'file' ? '📄 Smart File Processing' : '🚀 Enhanced AI Analysis'}
+              </p>
               <p>Our advanced AI will:</p>
               <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Clean and optimize your job description for better results</li>
-                <li>Extract and categorize required vs preferred skills</li>
-                <li>Standardize skill terminology and experience requirements</li>
-                <li>Identify missing requirements and suggest improvements</li>
+                {inputMethod === 'file' ? (
+                  <>
+                    <li>Extract text from PDF, DOC, and DOCX files automatically</li>
+                    <li>Detect job titles and clean formatting</li>
+                    <li>Extract and categorize all requirements intelligently</li>
+                    <li>Optimize the content for accurate candidate matching</li>
+                  </>
+                ) : (
+                  <>
+                    <li>Clean and optimize your job description for better results</li>
+                    <li>Extract and categorize required vs preferred skills</li>
+                    <li>Standardize skill terminology and experience requirements</li>
+                    <li>Identify missing requirements and suggest improvements</li>
+                  </>
+                )}
               </ul>
               <div className="mt-2 text-xs text-blue-600">
-                💡 Tip: Turn off AI Enhancement if you prefer to use your exact wording
+                {inputMethod === 'file'
+                  ? '💡 Tip: Enable AI Enhancement for optimized requirement extraction'
+                  : '💡 Tip: Turn off AI Enhancement if you prefer to use your exact wording'
+                }
               </div>
             </div>
           </div>

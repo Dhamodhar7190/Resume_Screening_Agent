@@ -205,7 +205,7 @@ class AIAnalyzer:
         if settings.google_api_key:
             try:
                 genai.configure(api_key=settings.google_api_key)
-                self.model = genai.GenerativeModel('gemini-1.5-flash')
+                self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
                 logger.info("✅ Advanced AI Analyzer initialized with enterprise features")
             except Exception as e:
                 logger.error(f"❌ Failed to initialize Google Gemini: {e}")
@@ -807,11 +807,27 @@ class AIAnalyzer:
         
         # Now analyze the (potentially enhanced) description
         prompt = f"""
-    Analyze this job description and extract detailed information. Return ONLY a valid JSON object:
+    You are an expert HR analyst specializing in technical job requirements. Analyze this job description with HIGH PRECISION and extract detailed information. Return ONLY a valid JSON object.
+
+    ANALYSIS INSTRUCTIONS:
+    1. Read the job description completely before categorizing any skills
+    2. Distinguish carefully between REQUIRED (must-have) vs PREFERRED (nice-to-have) skills
+    3. Be precise with experience level requirements - if it says "3+ years" use 3, not 5
+    4. Categorize skills correctly (e.g., "React" = web_frameworks, "Python" = programming_languages)
+    5. Only include skills that are explicitly mentioned or clearly implied
 
     Job Title: {job_title or 'Not specified'}
     Job Description:
     {enhanced_description}
+
+    SKILL CATEGORIZATION EXAMPLES:
+    - programming_languages: Python, JavaScript, Java, C#, Go, Rust, PHP, Ruby
+    - web_frameworks: React, Angular, Vue, Django, Flask, Express, Spring Boot, Laravel
+    - databases: MySQL, PostgreSQL, MongoDB, Redis, DynamoDB, Cassandra
+    - cloud_platforms: AWS, Azure, GCP, DigitalOcean
+    - devops_tools: Docker, Kubernetes, Jenkins, GitLab CI, Terraform, Ansible
+    - frontend_tools: HTML, CSS, SASS, Webpack, Vite, Tailwind CSS
+    - testing_tools: Jest, Pytest, JUnit, Selenium, Cypress
 
     Return exactly this JSON structure:
     {{
@@ -857,13 +873,15 @@ class AIAnalyzer:
         "summary": "comprehensive summary of the ideal candidate profile"
     }}
 
-    Rules:
-    - Extract specific skills and technologies mentioned
-    - Categorize skills properly into the provided categories
-    - Distinguish between required vs preferred qualifications
-    - Use null for missing information
-    - Be specific about experience levels and educational requirements
-    - Return only the JSON, no other text
+    STRICT EXTRACTION RULES:
+    - Extract ONLY skills explicitly mentioned - do not infer or add related skills
+    - Categorize skills using the examples above as reference
+    - For required vs preferred: "must have", "required", "essential" = required; "nice to have", "preferred", "bonus" = preferred
+    - For experience: Use EXACT numbers stated ("3+ years" = 3, "5-7 years" = 5, "minimum 2 years" = 2)
+    - For seniority_level: Base on experience requirements and job title (0-2 years = junior, 2-5 = mid, 5-10 = senior, 10+ = lead/principal)
+    - Use null for missing information - do not guess or assume
+    - Validate your categorizations - common mistakes: React in programming_languages (should be web_frameworks), SQL in web_frameworks (should be databases)
+    - Return only the JSON, no other text or explanations
     """
         
         try:
@@ -874,21 +892,25 @@ class AIAnalyzer:
             
             try:
                 job_analysis = json.loads(response)
-                
+
+                # 🌟 NEW: Apply validation to job analysis as well
+                validated_job_analysis = self._validate_job_analysis(job_analysis)
+
                 # Add role detection and weights
                 detected_role = self._detect_role_type_fixed(job_title or "", enhanced_description)
                 role_weights = self.role_weights.get(detected_role, self.role_weights["default"])
-                
+
                 # Enhanced result with all information
                 enhanced_analysis = {
-                    **job_analysis,
+                    **validated_job_analysis,
                     "detected_role_type": detected_role,
                     "role_specific_weights": role_weights,
                     "enhancement_details": enhancement_info,
                     "enhancement_features": {
                         "role_detection": True,
                         "adaptive_weighting": True,
-                        "integrated_enhancement": use_enhancement
+                        "integrated_enhancement": use_enhancement,
+                        "job_validation_applied": True
                     }
                 }
                 
@@ -926,10 +948,10 @@ class AIAnalyzer:
     2. Extract and organize all requirements clearly
     3. Standardize skill terminology (e.g., "JS" → "JavaScript", "React.js" → "React")
     4. Separate required vs preferred qualifications
-    5. Clarify experience levels and education requirements
-    6. Remove ambiguous or contradictory statements
-    7. Add industry-standard requirements if missing obvious ones
-    8. Structure the content logically
+    5. PRESERVE EXACT experience level requirements (do not change "3 years" to "5 years")
+    6. Only clarify education requirements if they are vague or missing
+    7. Remove ambiguous or contradictory statements (except experience years)
+    8. Structure the content logically without changing core requirements
 
     Return ONLY a valid JSON object with this exact structure:
     {{
@@ -941,10 +963,12 @@ class AIAnalyzer:
 
     RULES:
     - Use specific, standardized skill names from the tech industry
-    - Be realistic about experience requirements
+    - PRESERVE EXACT experience requirements as specified in the original (DO NOT modify years of experience)
+    - If original says "3 years" keep it as "3 years", if it says "5+ years" keep it as "5+ years"
+    - Only clarify experience requirements if they are ambiguous (e.g., "some experience" → "2-3 years")
     - Don't add requirements that weren't implied in the original
     - If information is missing, use null values
-    - Focus on clarity and accuracy
+    - Focus on clarity and accuracy while preserving original intent
     - Return only the JSON, no other text
     """
         
@@ -996,11 +1020,24 @@ class AIAnalyzer:
     """
         
         prompt = f"""
-    You are an expert technical recruiter analyzing a software developer's resume. Extract information accurately and return ONLY a properly formatted JSON object with NO additional text before or after.
+    You are a senior technical recruiter with 10+ years of experience analyzing software developer resumes. Your task is to extract information with HIGH ACCURACY and return ONLY a properly formatted JSON object.
+
+    ANALYSIS INSTRUCTIONS:
+    1. Read the ENTIRE resume carefully before making any assessments
+    2. Base proficiency levels on concrete evidence (project complexity, years used, professional context)
+    3. Calculate years_experience from actual work dates and project durations
+    4. Only include skills that are explicitly mentioned or clearly demonstrated
+    5. Be conservative with proficiency ratings - require strong evidence for "advanced" or "expert"
 
     Resume Content:
     {resume_text}
     {job_context}
+
+    PROFICIENCY LEVEL CRITERIA (be strict and evidence-based):
+    - "expert" (5+ years): Leading projects, mentoring others, architectural decisions, deep technical knowledge
+    - "advanced" (3-5 years): Independent complex projects, optimization work, technical leadership
+    - "intermediate" (1-3 years): Regular professional use, contributing to projects, some independence
+    - "beginner" (0-1 year): Learning, basic projects, guided work, limited professional use
 
     CRITICAL: Return ONLY the JSON object below. No explanations, no markdown, no code blocks, just the raw JSON:
 
@@ -1125,15 +1162,30 @@ class AIAnalyzer:
         }}
     }}
 
-    EXTRACTION GUIDELINES:
-    - For skills: Estimate proficiency based on project complexity and duration
-    - For years_experience: Calculate from work history and project involvement  
-    - Use "beginner" (0-1 year), "intermediate" (1-3 years), "advanced" (3-5 years), "expert" (5+ years)
-    - Extract specific technologies mentioned in projects
-    - Look for quantified achievements (numbers, percentages, scale)
-    - Identify soft skills from project descriptions and responsibilities
-    - Calculate total experience from work history dates
-    - Use null for missing information, never leave fields empty
+    STRICT EXTRACTION GUIDELINES:
+
+    SKILLS EXTRACTION:
+    - Only include skills EXPLICITLY mentioned in the resume
+    - For years_experience: Count from first professional use to present (be precise with math)
+    - For proficiency: Require EVIDENCE - don't guess or assume
+    - Examples of evidence: "Led React development", "Optimized MySQL queries", "Architected microservices"
+    - If no evidence for proficiency level, default to "intermediate" for professional use
+
+    EXPERIENCE CALCULATION:
+    - Calculate total_years from actual employment start/end dates
+    - Calculate relevant_years as subset of total experience in technical roles
+    - For current_level: "junior" (0-2 years), "mid" (2-5 years), "senior" (5-10 years), "lead" (10+ years)
+
+    ACCURACY REQUIREMENTS:
+    - DO NOT invent information not present in the resume
+    - DO NOT extrapolate beyond what is clearly stated
+    - USE EXACT DATES when calculating durations
+    - VALIDATE your skill categorizations (e.g., React goes in web_frameworks, not programming_languages)
+
+    QUALITY SCORING:
+    - Base formatting_score on actual resume structure and organization
+    - Base completeness_score on presence of contact info, experience, education, skills
+    - Be honest about resume quality - don't inflate scores
 
     Return ONLY the JSON object. No other text whatsoever."""
 
@@ -1158,8 +1210,12 @@ class AIAnalyzer:
             
             try:
                 resume_analysis = json.loads(response_clean)
-                logger.info("✅ Enhanced resume analyzed successfully")
-                return resume_analysis
+
+                # 🌟 NEW: Accuracy validation and correction
+                validated_analysis = await self._validate_and_correct_analysis(resume_analysis, resume_text)
+
+                logger.info("✅ Enhanced resume analyzed and validated successfully")
+                return validated_analysis
             except json.JSONDecodeError as e:
                 logger.warning(f"JSON decode error: {e}")
                 logger.warning(f"Response content: {response_clean[:500]}...")
@@ -1171,10 +1227,10 @@ class AIAnalyzer:
             raise Exception(f"Failed to analyze resume: {str(e)}")
     
     async def _call_gemini(self, prompt: str) -> str:
-        """Call Google Gemini API asynchronously with enhanced configuration"""
+        """Call Google Gemini API asynchronously with enhanced configuration for better accuracy"""
         if not self.model:
             raise Exception("Google Gemini model not initialized. Check your API key in .env file.")
-        
+
         try:
             loop = asyncio.get_event_loop()
             response = await loop.run_in_executor(
@@ -1183,20 +1239,26 @@ class AIAnalyzer:
                     prompt,
                     generation_config=genai.types.GenerationConfig(
                         max_output_tokens=8000,
-                        temperature=0.1,
+                        temperature=0.3,  # Increased from 0.1 for better reasoning
                         candidate_count=1,
-                        top_p=0.8,
-                        top_k=40
+                        top_p=0.9,        # Increased for more comprehensive responses
+                        top_k=50         # Increased for better vocabulary
                     )
                 )
             )
-            
+
+            # Check if response has text and is valid
+            if not hasattr(response, 'text') or not response.text:
+                raise Exception("Empty or invalid response from Gemini API")
+
             return response.text
-            
+
         except Exception as e:
             logger.error(f"❌ Google Gemini API error: {str(e)}")
             if "API_KEY" in str(e).upper():
                 raise Exception("Invalid Google API key. Please check your GOOGLE_API_KEY in .env file.")
+            if "not found" in str(e).lower():
+                raise Exception(f"Model not found. Using 'gemini-pro' model. Error: {str(e)}")
             raise Exception(f"Google Gemini API error: {str(e)}")
     
     def _extract_json_from_response(self, response: str) -> Dict[str, Any]:
@@ -1263,6 +1325,192 @@ class AIAnalyzer:
                 "error_message": str(e)
             }
     
+    async def _validate_and_correct_analysis(self, analysis: Dict[str, Any], resume_text: str) -> Dict[str, Any]:
+        """🌟 NEW: Validate and correct analysis for better accuracy"""
+
+        # Quick validation checks
+        corrected_analysis = analysis.copy()
+
+        # 1. Validate skill categorizations
+        skills_by_category = corrected_analysis.get("skills_by_category", {})
+
+        # Common categorization fixes
+        corrections_made = []
+
+        # Check for misplaced skills
+        programming_langs = ["python", "javascript", "java", "c#", "go", "rust", "php", "ruby", "swift", "kotlin"]
+        web_frameworks = ["react", "angular", "vue", "django", "flask", "express", "spring", "laravel"]
+        databases = ["mysql", "postgresql", "mongodb", "redis", "sqlite", "dynamodb", "oracle"]
+
+        # Fix common categorization errors - create a new skills structure
+        corrected_skills_by_category = {}
+        skills_to_move = []
+
+        # First pass: identify skills that need to be moved
+        for category, skills in skills_by_category.items():
+            corrected_skills_by_category[category] = []
+            if isinstance(skills, list):
+                for skill_item in skills:
+                    if isinstance(skill_item, dict):
+                        skill_name = (skill_item.get("name") or "").lower()
+                        moved = False
+
+                        # Check if skill is in wrong category
+                        if category == "programming_languages" and any(fw in skill_name for fw in web_frameworks):
+                            skills_to_move.append((skill_item, "web_frameworks"))
+                            corrections_made.append(f"Moved {skill_item.get('name')} from programming_languages to web_frameworks")
+                            moved = True
+
+                        elif category == "web_frameworks" and any(pl in skill_name for pl in programming_langs):
+                            skills_to_move.append((skill_item, "programming_languages"))
+                            corrections_made.append(f"Moved {skill_item.get('name')} from web_frameworks to programming_languages")
+                            moved = True
+
+                        if not moved:
+                            corrected_skills_by_category[category].append(skill_item)
+                    else:
+                        corrected_skills_by_category[category].append(skill_item)
+
+        # Second pass: add moved skills to their correct categories
+        for skill_item, target_category in skills_to_move:
+            if target_category not in corrected_skills_by_category:
+                corrected_skills_by_category[target_category] = []
+            corrected_skills_by_category[target_category].append(skill_item)
+
+        skills_by_category = corrected_skills_by_category
+
+        # 2. Validate experience calculations
+        experience_analysis = corrected_analysis.get("experience_analysis", {})
+        work_history = corrected_analysis.get("work_history", [])
+
+        if work_history:
+            # Recalculate total years more accurately
+            total_months = 0
+            for job in work_history:
+                duration = job.get("duration_months", 0)
+                if isinstance(duration, (int, float)) and duration > 0:
+                    total_months += duration
+
+            calculated_years = round(total_months / 12, 1)
+            original_years = experience_analysis.get("total_years", 0)
+
+            # If calculated differs significantly from original, use calculated
+            if abs(calculated_years - original_years) > 0.5:
+                experience_analysis["total_years"] = calculated_years
+                corrections_made.append(f"Corrected total_years from {original_years} to {calculated_years}")
+
+        # 3. Validate resume quality scores (ensure they're reasonable)
+        resume_quality = corrected_analysis.get("resume_quality", {})
+        contact_info = corrected_analysis.get("contact_info", {})
+
+        # Check if scores are too high given the actual content
+        has_contact = bool(contact_info.get("email") or contact_info.get("phone"))
+        has_experience = bool(work_history)
+        has_skills = bool([s for s in skills_by_category.values() if s])
+
+        completeness_factors = sum([has_contact, has_experience, has_skills])
+        reasonable_completeness = min(completeness_factors * 30, 90)
+
+        current_completeness = resume_quality.get("completeness_score", 50)
+        if current_completeness > reasonable_completeness + 10:
+            resume_quality["completeness_score"] = reasonable_completeness
+            corrections_made.append(f"Adjusted completeness_score from {current_completeness} to {reasonable_completeness}")
+
+        # Update the corrected analysis
+        corrected_analysis["skills_by_category"] = skills_by_category
+        corrected_analysis["experience_analysis"] = experience_analysis
+        corrected_analysis["resume_quality"] = resume_quality
+
+        # Add validation metadata
+        corrected_analysis["_validation_applied"] = True
+        corrected_analysis["_corrections_made"] = corrections_made
+
+        if corrections_made:
+            logger.info(f"🔧 Applied {len(corrections_made)} accuracy corrections: {corrections_made}")
+
+        return corrected_analysis
+
+    def _validate_job_analysis(self, job_analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """🌟 NEW: Validate job analysis for accuracy"""
+
+        corrected_analysis = job_analysis.copy()
+        corrections_made = []
+
+        # 1. Validate skill categorizations in job requirements
+        required_skills = corrected_analysis.get("required_skills", {})
+        preferred_skills = corrected_analysis.get("preferred_skills", {})
+
+        # Common skill categorization fixes
+        programming_langs = ["python", "javascript", "java", "c#", "go", "rust", "php", "ruby", "swift", "kotlin"]
+        web_frameworks = ["react", "angular", "vue", "django", "flask", "express", "spring", "laravel", "fastapi"]
+        databases = ["mysql", "postgresql", "mongodb", "redis", "sqlite", "dynamodb", "oracle", "sql"]
+
+        for skill_set_name, skill_set in [("required_skills", required_skills), ("preferred_skills", preferred_skills)]:
+            for category, skills in skill_set.items():
+                if isinstance(skills, list):
+                    corrected_skills = []
+                    for skill in skills:
+                        skill_lower = str(skill).lower()
+                        moved = False
+
+                        # Check if skill is in wrong category
+                        if category == "programming_languages" and any(fw in skill_lower for fw in web_frameworks):
+                            # Move to web_frameworks
+                            if "web_frameworks" not in skill_set:
+                                skill_set["web_frameworks"] = []
+                            skill_set["web_frameworks"].append(skill)
+                            corrections_made.append(f"Moved '{skill}' from {category} to web_frameworks in {skill_set_name}")
+                            moved = True
+
+                        elif category == "web_frameworks" and any(pl in skill_lower for pl in programming_langs):
+                            # Move to programming_languages
+                            if "programming_languages" not in skill_set:
+                                skill_set["programming_languages"] = []
+                            skill_set["programming_languages"].append(skill)
+                            corrections_made.append(f"Moved '{skill}' from {category} to programming_languages in {skill_set_name}")
+                            moved = True
+
+                        elif category == "programming_languages" and any(db in skill_lower for db in databases):
+                            # Move to databases
+                            if "databases" not in skill_set:
+                                skill_set["databases"] = []
+                            skill_set["databases"].append(skill)
+                            corrections_made.append(f"Moved '{skill}' from {category} to databases in {skill_set_name}")
+                            moved = True
+
+                        if not moved:
+                            corrected_skills.append(skill)
+
+                    skill_set[category] = corrected_skills
+
+        # 2. Validate experience requirements logic
+        min_exp = corrected_analysis.get("minimum_experience")
+        pref_exp = corrected_analysis.get("preferred_experience")
+        seniority = corrected_analysis.get("seniority_level")
+
+        # Check if experience levels make sense
+        if min_exp and pref_exp and min_exp > pref_exp:
+            # Swap them
+            corrected_analysis["minimum_experience"] = pref_exp
+            corrected_analysis["preferred_experience"] = min_exp
+            corrections_made.append(f"Swapped minimum_experience ({min_exp}) and preferred_experience ({pref_exp})")
+
+        # Check if seniority matches experience requirements
+        if min_exp and seniority:
+            expected_seniority = "junior" if min_exp <= 2 else "mid" if min_exp <= 5 else "senior" if min_exp <= 10 else "lead"
+            if seniority != expected_seniority:
+                corrected_analysis["seniority_level"] = expected_seniority
+                corrections_made.append(f"Corrected seniority_level from '{seniority}' to '{expected_seniority}' based on {min_exp} years requirement")
+
+        # Add validation metadata
+        corrected_analysis["_job_validation_applied"] = True
+        corrected_analysis["_job_corrections_made"] = corrections_made
+
+        if corrections_made:
+            logger.info(f"🔧 Applied {len(corrections_made)} job analysis corrections: {corrections_made}")
+
+        return corrected_analysis
+
     def _get_timestamp(self) -> str:
         """Get current timestamp for metadata"""
         return datetime.now().isoformat()
@@ -1285,7 +1533,7 @@ Return exactly: {"test": "success", "message": "Advanced AI analyzer is working"
             return {
                 "status": "connected",
                 "provider": "google_gemini",
-                "model": "gemini-1.5-flash",
+                "model": "gemini-2.0-flash-exp",
                 "enterprise_features": [
                     "skill_intelligence_with_synonyms",
                     "role_specific_weighting",

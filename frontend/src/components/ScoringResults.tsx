@@ -576,15 +576,59 @@ const ScoringResults: React.FC<ScoringResultsProps> = ({
                 </div>
               )}
 
-              {/* AI Justification */}
+              {/* Enhanced AI Analysis */}
               {selectedCandidate.justification && (
                 <div className="mb-6">
-                  <h4 className="font-semibold text-gray-900 mb-3">
-                    AI Analysis
+                  <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                    <Target className="w-5 h-5 text-blue-500 mr-2" />
+                    Enhanced AI Analysis
                   </h4>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {selectedCandidate.justification}
-                  </p>
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    {(() => {
+                      const analysis = selectedCandidate.justification;
+
+                      // Try to parse structured analysis or fall back to formatted text
+                      const sections = [
+                        { title: "Technical Competency", pattern: /Technical Competency[:\s]*(.*?)(?=Experience Quality|Role Alignment|Overall Assessment|$)/s },
+                        { title: "Experience Quality", pattern: /Experience Quality[:\s]*(.*?)(?=Technical Competency|Role Alignment|Overall Assessment|$)/s },
+                        { title: "Role Alignment", pattern: /Role Alignment[:\s]*(.*?)(?=Technical Competency|Experience Quality|Overall Assessment|$)/s },
+                        { title: "Overall Assessment", pattern: /Overall Assessment[:\s]*(.*?)(?=Technical Competency|Experience Quality|Role Alignment|$)/s }
+                      ];
+
+                      const parsedSections = sections.map(section => {
+                        const match = analysis.match(section.pattern);
+                        return match ? { title: section.title, content: match[1].trim() } : null;
+                      }).filter((section): section is { title: string; content: string } => section !== null);
+
+                      if (parsedSections.length > 0) {
+                        return (
+                          <div className="space-y-4">
+                            {parsedSections.map((section, index) => (
+                              <div key={index} className={index > 0 ? "border-t border-gray-200 pt-3" : ""}>
+                                <h5 className="text-sm font-semibold text-gray-800 mb-2 flex items-center">
+                                  <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                                  {section.title}
+                                </h5>
+                                <p className="text-sm text-gray-600 leading-relaxed pl-4">
+                                  {section.content}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      } else {
+                        // Fallback: show original justification if no structured format detected
+                        return (
+                          <div>
+                            <h5 className="text-sm font-semibold text-gray-800 mb-2">Analysis Summary</h5>
+                            <p className="text-sm text-gray-600 leading-relaxed">
+                              {analysis}
+                            </p>
+                          </div>
+                        );
+                      }
+                    })()}
+                  </div>
                 </div>
               )}
 

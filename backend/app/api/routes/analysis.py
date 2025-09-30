@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, File, UploadFile
 from app.services.ai_analyzer import AIAnalyzer
+from app.services.document_parser import DocumentParser
 from app.core.config import settings
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
@@ -8,8 +9,9 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Initialize AI analyzer
+# Initialize AI analyzer and document parser
 ai_analyzer = AIAnalyzer()
+document_parser = DocumentParser()
 
 # Request models
 class JobDescriptionRequest(BaseModel):
@@ -144,6 +146,115 @@ async def analyze_job_description(
             detail=f"Error analyzing job description: {str(e)}"
         )
 
+@router.post("/analyze-job-file")
+async def analyze_job_description_file(
+    file: UploadFile = File(...),
+    enhance_with_ai: bool = True
+) -> Dict[str, Any]:
+    """
+    Upload and analyze a job description file (PDF, DOC, DOCX)
+
+    This endpoint:
+    1. Validates and parses the uploaded job description file
+    2. Extracts text content from PDF/Word documents
+    3. Optionally enhances with AI optimization
+    4. Analyzes and extracts structured requirements
+    5. Returns detailed job analysis with skill categorization
+    """
+
+    logger.info(f"📄 Analyzing job description file: {file.filename}")
+
+    try:
+        # Validate file type
+        if not file.filename.lower().endswith(('.pdf', '.doc', '.docx')):
+            raise HTTPException(
+                status_code=400,
+                detail="Unsupported file format. Please upload PDF, DOC, or DOCX files."
+            )
+
+        # Validate file size (20MB limit for job descriptions)
+        if not document_parser.validate_file_size(file, max_size_mb=20):
+            raise HTTPException(
+                status_code=400,
+                detail="File too large. Maximum size is 20MB for job descriptions."
+            )
+
+        # Parse document to extract text
+        logger.info(f"🔍 Parsing document: {file.filename}")
+        job_description_text = await document_parser.parse_document(file)
+
+        if not job_description_text.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="No text content found in the uploaded file."
+            )
+
+        # Extract potential job title from first few lines
+        lines = job_description_text.split('\n')
+        potential_title = None
+        for line in lines[:5]:  # Check first 5 lines
+            line = line.strip()
+            if line and len(line) < 100 and any(keyword in line.lower() for keyword in
+                ['developer', 'engineer', 'analyst', 'manager', 'specialist', 'lead', 'senior', 'junior']):
+                potential_title = line
+                break
+
+        # Use extracted title or filename as fallback
+        job_title = potential_title or file.filename.rsplit('.', 1)[0]
+
+        logger.info(f"📊 Extracted job title: {job_title}")
+        logger.info(f"📝 Job description length: {len(job_description_text)} characters")
+
+        # Analyze with AI (with optional enhancement)
+        analysis = await ai_analyzer.analyze_job_description(
+            job_description_text,
+            job_title,
+            use_enhancement=enhance_with_ai
+        )
+
+        result = {
+            "status": "success",
+            "filename": file.filename,
+            "extracted_job_title": job_title,
+            "job_description_length": len(job_description_text),
+            "analysis": analysis,
+            "ai_provider": "google_gemini",
+            "features": ["file_upload_support", "enhanced_skill_categorization", "requirement_extraction"],
+            "message": f"Job description file '{file.filename}' analyzed successfully{'with AI enhancement' if enhance_with_ai else 'without enhancement'}"
+        }
+
+        # Add enhancement information if available
+        if "enhancement_details" in analysis:
+            result["enhancement_info"] = {
+                "was_enhanced": analysis["enhancement_details"]["was_enhanced"],
+                "optimization_applied": enhance_with_ai
+            }
+
+            if analysis["enhancement_details"]["was_enhanced"]:
+                result["enhancement_info"]["improvements"] = analysis["enhancement_details"].get("optimization_notes")
+                result["enhancement_info"]["quality_boost"] = analysis["enhancement_details"].get("quality_improvement")
+
+        # Add file processing metadata
+        result["file_processing"] = {
+            "original_filename": file.filename,
+            "file_size_kb": round(len(job_description_text) / 1024, 2),
+            "extracted_title": job_title,
+            "processing_successful": True
+        }
+
+        logger.info(f"✅ Job description file analysis completed: {file.filename}")
+        return result
+
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error analyzing job description file {file.filename}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error analyzing job description file: {str(e)}"
+        )
+
 @router.post("/analyze-resume-text")
 async def analyze_resume_text(
     request: ResumeTextRequest
@@ -205,16 +316,26 @@ async def get_ai_status():
         "google_api_configured": bool(settings.google_api_key),
         "max_tokens": settings.max_tokens,
         "temperature": settings.temperature,
-        "model": "gemini-1.5-flash",
+        "model": "gemini-2.0-flash-exp",
         "connection_test": connection_test,
         "status": "ready" if connection_test.get("status") == "connected" else "not_ready",
         "new_features": [
             "job_description_enhancement",
-            "ai_prompt_optimization", 
+            "job_description_file_upload",
+            "pdf_docx_parsing",
+            "ai_prompt_optimization",
             "improved_skill_categorization",
             "career_trajectory_analysis",
             "resume_quality_scoring"
-        ]
+        ],
+        "supported_file_formats": {
+            "job_descriptions": [".pdf", ".doc", ".docx"],
+            "resumes": [".pdf", ".doc", ".docx"],
+            "max_file_sizes": {
+                "job_descriptions": "20MB",
+                "resumes": "10MB"
+            }
+        }
     }
 
 @router.post("/compare-job-descriptions")

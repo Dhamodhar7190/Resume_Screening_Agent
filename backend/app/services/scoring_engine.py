@@ -203,26 +203,86 @@ class ScoringEngine:
         
         logger.info("✅ Enhanced ScoringEngine initialized with enterprise features")
 
+    def _create_fallback_analysis(self, error_message: str) -> Dict[str, Any]:
+        """Create a fallback analysis structure when AI analysis fails"""
+
+        return {
+            "contact_info": {
+                "name": "Analysis Failed",
+                "email": None,
+                "phone": None,
+                "linkedin": None,
+                "location": None
+            },
+            "skills_by_category": {
+                "programming_languages": [],
+                "web_frameworks": [],
+                "databases": [],
+                "cloud_platforms": [],
+                "devops_tools": [],
+                "frontend_tools": [],
+                "testing_tools": [],
+                "version_control": [],
+                "soft_skills": []
+            },
+            "work_history": [],
+            "education": {
+                "degrees": [],
+                "certifications": []
+            },
+            "projects": [],
+            "experience_analysis": {
+                "total_years": 0,
+                "relevant_years": 0,
+                "current_level": "unknown"
+            },
+            "candidate_summary": f"AI Analysis failed: {error_message[:200]}...",
+            "resume_quality": {
+                "overall_quality": 30,
+                "formatting_score": 30,
+                "completeness_score": 30
+            },
+            "leadership_indicators": {
+                "has_leadership_experience": False,
+                "team_sizes_managed": [],
+                "leadership_skills": []
+            },
+            "career_insights": {
+                "specializations": [],
+                "career_trajectory": "unknown",
+                "job_stability": "unknown"
+            },
+            "analysis_error": True,
+            "error_message": error_message
+        }
+
     def _get_role_specific_weights_fixed(self, detected_role: str) -> dict:
         """
-        🎯 IMPROVED: Get role-specific weights with better defaults
+        🎯 IMPROVED: Get role-specific weights with normalization
         """
-        
-        # Return role-specific weights or a balanced default
+
+        # Get role-specific weights or a balanced default
         if detected_role in self.role_specific_weights:
-            return self.role_specific_weights[detected_role]
-        
-        # Improved default weights for unknown roles
-        return {
-            "programming_languages": 0.25,
-            "web_frameworks": 0.20,
-            "databases": 0.15,
-            "cloud_platforms": 0.12,
-            "devops_tools": 0.10,
-            "frontend_tools": 0.10,
-            "testing_tools": 0.05,
-            "version_control": 0.03
-        }
+            weights = self.role_specific_weights[detected_role].copy()
+        else:
+            # Improved default weights for unknown roles
+            weights = {
+                "programming_languages": 0.25,
+                "web_frameworks": 0.20,
+                "databases": 0.15,
+                "cloud_platforms": 0.12,
+                "devops_tools": 0.10,
+                "frontend_tools": 0.10,
+                "testing_tools": 0.05,
+                "version_control": 0.03
+            }
+
+        # 🌟 FIXED: Normalize weights to sum to 1.0
+        total_weight = sum(weights.values())
+        if total_weight > 0:
+            weights = {k: v / total_weight for k, v in weights.items()}
+
+        return weights
     async def score_resume_against_job(
         self, 
         resume_text: str, 
@@ -246,17 +306,43 @@ class ScoringEngine:
         try:
             # Step 1: Enhanced resume analysis with job context
             logger.info(f"🔍 Calling AI analyzer for resume analysis: {filename}")
-            resume_analysis = await self.ai_analyzer.analyze_resume_content(
-                resume_text, 
-                job_analysis
-            )
-            logger.info(f"📋 AI analyzer returned type: {type(resume_analysis)}")
-            
-            # Defensive programming: Ensure resume_analysis is a dictionary
-            if not isinstance(resume_analysis, dict):
-                logger.error(f"❌ Resume analysis returned unexpected type: {type(resume_analysis)}")
-                logger.error(f"Content: {str(resume_analysis)[:500]}...")
-                raise Exception(f"Resume analysis returned {type(resume_analysis)} instead of dict")
+            try:
+                resume_analysis = await self.ai_analyzer.analyze_resume_content(
+                    resume_text,
+                    job_analysis
+                )
+                logger.info(f"📋 AI analyzer returned type: {type(resume_analysis)}")
+
+                # Defensive programming: Ensure resume_analysis is a dictionary
+                if not isinstance(resume_analysis, dict):
+                    logger.error(f"❌ Resume analysis returned unexpected type: {type(resume_analysis)}")
+                    logger.error(f"Content: {str(resume_analysis)[:500]}...")
+
+                    # Try to handle string responses that might be error messages
+                    if isinstance(resume_analysis, str):
+                        # If it's a string, try to extract any JSON from it
+                        try:
+                            import json
+                            # Try to find JSON in the string
+                            start = resume_analysis.find('{')
+                            end = resume_analysis.rfind('}') + 1
+                            if start != -1 and end > start:
+                                json_str = resume_analysis[start:end]
+                                resume_analysis = json.loads(json_str)
+                                logger.info("✅ Successfully extracted JSON from string response")
+                            else:
+                                raise Exception("No JSON found in string response")
+                        except:
+                            # Create a fallback analysis structure
+                            logger.warning("⚠️ Creating fallback analysis structure")
+                            resume_analysis = self._create_fallback_analysis(str(resume_analysis))
+                    else:
+                        raise Exception(f"Resume analysis returned {type(resume_analysis)} instead of dict")
+
+            except Exception as analysis_error:
+                logger.error(f"❌ Error in AI analysis for {filename}: {str(analysis_error)}")
+                # Create a minimal fallback analysis to prevent complete failure
+                resume_analysis = self._create_fallback_analysis(str(analysis_error))
                 
             logger.info(f"📋 Resume analysis keys: {list(resume_analysis.keys())}")
                 
@@ -278,57 +364,105 @@ class ScoringEngine:
             try:
                 logger.info(f"🔍 Starting skill matching for {filename}")
                 skills_scoring = await self._score_enhanced_skills_match(
-                    resume_analysis, 
-                    job_analysis, 
+                    resume_analysis,
+                    job_analysis,
                     detected_role
                 )
+                # Defensive check: ensure skills_scoring is a dictionary
+                if not isinstance(skills_scoring, dict):
+                    logger.error(f"❌ Skill scoring returned {type(skills_scoring)}: {str(skills_scoring)[:200]}")
+                    skills_scoring = {"score": 0, "matched_skills": [], "missing_critical": [], "category_coverage": {}}
                 logger.info(f"✅ Skill matching completed for {filename}")
             except Exception as e:
                 logger.error(f"❌ Error in skill matching for {filename}: {str(e)}")
-                raise Exception(f"Skill matching failed: {str(e)}")
-            
+                skills_scoring = {"score": 0, "matched_skills": [], "missing_critical": [], "category_coverage": {}}
+
             # Step 4: Enhanced experience evaluation with quality analysis
             try:
                 logger.info(f"🔍 Starting experience scoring for {filename}")
                 experience_scoring = await self._score_enhanced_experience(
-                    resume_analysis, 
+                    resume_analysis,
                     job_analysis
                 )
+                # Defensive check: ensure experience_scoring is a dictionary
+                if not isinstance(experience_scoring, dict):
+                    logger.error(f"❌ Experience scoring returned {type(experience_scoring)}: {str(experience_scoring)[:200]}")
+                    experience_scoring = {"score": 0, "base_score": 0, "quality_bonus": 0, "analysis": {"experience_quality_tier": "basic"}}
                 logger.info(f"✅ Experience scoring completed for {filename}")
             except Exception as e:
                 logger.error(f"❌ Error in experience scoring for {filename}: {str(e)}")
-                raise Exception(f"Experience scoring failed: {str(e)}")
-            
+                experience_scoring = {"score": 0, "base_score": 0, "quality_bonus": 0, "analysis": {"experience_quality_tier": "basic"}}
+
             # Step 5: Education and certification scoring
-            education_scoring = self._score_education_match(
-                resume_analysis, 
-                job_analysis
-            )
-            
+            try:
+                education_scoring = self._score_education_match(
+                    resume_analysis,
+                    job_analysis
+                )
+                # Defensive check: ensure education_scoring is a dictionary
+                if not isinstance(education_scoring, dict):
+                    logger.error(f"❌ Education scoring returned {type(education_scoring)}: {str(education_scoring)[:200]}")
+                    education_scoring = {"score": 0}
+            except Exception as e:
+                logger.error(f"❌ Error in education scoring for {filename}: {str(e)}")
+                education_scoring = {"score": 0}
+
             # Step 6: Enhanced additional qualifications scoring
-            additional_scoring = await self._score_enhanced_additional_qualifications(
-                resume_analysis, 
-                job_analysis
-            )
+            try:
+                additional_scoring = await self._score_enhanced_additional_qualifications(
+                    resume_analysis,
+                    job_analysis
+                )
+                # Defensive check: ensure additional_scoring is a dictionary
+                if not isinstance(additional_scoring, dict):
+                    logger.error(f"❌ Additional scoring returned {type(additional_scoring)}: {str(additional_scoring)[:200]}")
+                    additional_scoring = {"score": 0}
+            except Exception as e:
+                logger.error(f"❌ Error in additional scoring for {filename}: {str(e)}")
+                additional_scoring = {"score": 0}
             
             # Step 7: Red flag detection and analysis
-            red_flag_analysis = self._detect_red_flags(resume_analysis)
-            
+            try:
+                red_flag_analysis = self._detect_red_flags(resume_analysis)
+                # Defensive check: ensure red_flag_analysis is a dictionary
+                if not isinstance(red_flag_analysis, dict):
+                    logger.error(f"❌ Red flag analysis returned {type(red_flag_analysis)}: {str(red_flag_analysis)[:200]}")
+                    red_flag_analysis = {"flags_detected": [], "total_penalty": 0, "risk_level": "minimal", "has_concerns": False}
+            except Exception as e:
+                logger.error(f"❌ Error in red flag analysis for {filename}: {str(e)}")
+                red_flag_analysis = {"flags_detected": [], "total_penalty": 0, "risk_level": "minimal", "has_concerns": False}
+
             # Step 8: Calculate enhanced weighted final score
-            final_scores = self._calculate_enhanced_weighted_scores({
-                "required_skills_score": skills_scoring["score"],
-                "experience_score": experience_scoring["score"],
-                "education_score": education_scoring["score"],
-                "additional_qualifications_score": additional_scoring["score"]
-            }, red_flag_analysis, detected_role)
-            
+            try:
+                final_scores = self._calculate_enhanced_weighted_scores({
+                    "required_skills_score": skills_scoring.get("score", 0),
+                    "experience_score": experience_scoring.get("score", 0),
+                    "education_score": education_scoring.get("score", 0),
+                    "additional_qualifications_score": additional_scoring.get("score", 0)
+                }, red_flag_analysis, detected_role)
+                # Defensive check: ensure final_scores is a dictionary
+                if not isinstance(final_scores, dict):
+                    logger.error(f"❌ Final scores returned {type(final_scores)}: {str(final_scores)[:200]}")
+                    final_scores = {"overall_score": 0, "role_fit_score": 0}
+            except Exception as e:
+                logger.error(f"❌ Error in final scoring for {filename}: {str(e)}")
+                final_scores = {"overall_score": 0, "role_fit_score": 0}
+
             # Step 9: Generate enhanced intelligent insights
-            insights = await self._generate_enhanced_insights(
-                resume_analysis, 
-                job_analysis, 
-                skills_scoring, 
-                experience_scoring
-            )
+            try:
+                insights = await self._generate_enhanced_insights(
+                    resume_analysis,
+                    job_analysis,
+                    skills_scoring,
+                    experience_scoring
+                )
+                # Defensive check: ensure insights is a dictionary
+                if not isinstance(insights, dict):
+                    logger.error(f"❌ Insights returned {type(insights)}: {str(insights)[:200]}")
+                    insights = {"strengths": [], "concerns": [], "detailed_analysis": "Analysis failed"}
+            except Exception as e:
+                logger.error(f"❌ Error in insights generation for {filename}: {str(e)}")
+                insights = {"strengths": [], "concerns": [], "detailed_analysis": f"Analysis failed: {str(e)}"}
             
             # Step 10: Compile comprehensive enhanced results
             processing_time = (datetime.now() - start_time).total_seconds()
@@ -1157,22 +1291,35 @@ class ScoringEngine:
             return "minimal"
     
     def _calculate_enhanced_weighted_scores(self, detailed_scoring: Dict[str, Any], red_flag_analysis: Dict[str, Any], detected_role: str) -> Dict[str, Any]:
-        """🎯 Calculate final weighted scores with red flag penalties"""
-        
+        """🎯 Calculate final weighted scores with role-specific adjustments and red flag penalties"""
+
         required_skills = detailed_scoring.get("required_skills_score", 0)
         experience = detailed_scoring.get("experience_score", 0)
         education = detailed_scoring.get("education_score", 0)
         additional = detailed_scoring.get("additional_qualifications_score", 0)
-        
-        # Get role-specific base weights (could be enhanced further)
-        weights = self.base_weights
-        
+
+        # 🌟 FIXED: Apply role-specific weight adjustments
+        role_adjustments = self._get_role_weight_adjustments(detected_role)
+
+        # Adjust base weights based on role
+        adjusted_weights = {
+            "required_skills": self.base_weights["required_skills"] * role_adjustments.get("skills_multiplier", 1.0),
+            "experience": self.base_weights["experience"] * role_adjustments.get("experience_multiplier", 1.0),
+            "education": self.base_weights["education"] * role_adjustments.get("education_multiplier", 1.0),
+            "additional_qualifications": self.base_weights["additional_qualifications"] * role_adjustments.get("additional_multiplier", 1.0)
+        }
+
+        # Normalize weights to sum to 1.0
+        total_weight = sum(adjusted_weights.values())
+        if total_weight > 0:
+            adjusted_weights = {k: v / total_weight for k, v in adjusted_weights.items()}
+
         # Calculate weighted overall score
         overall_score = (
-            required_skills * weights["required_skills"] +
-            experience * weights["experience"] +
-            education * weights["education"] + 
-            additional * weights["additional_qualifications"]
+            required_skills * adjusted_weights["required_skills"] +
+            experience * adjusted_weights["experience"] +
+            education * adjusted_weights["education"] +
+            additional * adjusted_weights["additional_qualifications"]
         )
         
         # Apply red flag penalty
@@ -1187,7 +1334,19 @@ class ScoringEngine:
             "required_skills": required_skills,
             "experience": experience,
             "education": education,
-            "additional_qualifications": additional
+            "additional_qualifications": additional,
+            # 🌟 NEW: Scoring transparency
+            "scoring_breakdown": {
+                "detected_role": detected_role,
+                "role_adjustments": role_adjustments,
+                "adjusted_weights": adjusted_weights,
+                "weighted_contributions": {
+                    "skills_contribution": required_skills * adjusted_weights["required_skills"],
+                    "experience_contribution": experience * adjusted_weights["experience"],
+                    "education_contribution": education * adjusted_weights["education"],
+                    "additional_contribution": additional * adjusted_weights["additional_qualifications"]
+                }
+            }
         }
     
     def _calculate_role_fit_score(self, role: str, scores: Dict[str, Any]) -> float:
@@ -1219,7 +1378,56 @@ class ScoringEngine:
         
         role_fit = (adjusted_skills + adjusted_experience + adjusted_education) / 3
         return min(100, role_fit)
-    
+
+    def _get_role_weight_adjustments(self, detected_role: str) -> Dict[str, float]:
+        """🎯 Get role-specific weight multipliers for main scoring categories"""
+
+        role_adjustments = {
+            "frontend_developer": {
+                "skills_multiplier": 1.3,      # Skills most important for frontend
+                "experience_multiplier": 0.9,   # Slightly less emphasis on years
+                "education_multiplier": 0.8,    # Education less critical
+                "additional_multiplier": 1.2    # Portfolio/projects important
+            },
+            "backend_developer": {
+                "skills_multiplier": 1.2,      # Strong technical skills needed
+                "experience_multiplier": 1.1,   # Experience with systems important
+                "education_multiplier": 1.0,    # Standard education weight
+                "additional_multiplier": 0.9    # Less emphasis on extras
+            },
+            "fullstack_developer": {
+                "skills_multiplier": 1.1,      # Balanced skill requirements
+                "experience_multiplier": 1.1,   # Experience across stack valuable
+                "education_multiplier": 0.9,    # Practical skills over formal education
+                "additional_multiplier": 1.0    # Standard additional weight
+            },
+            "devops_engineer": {
+                "skills_multiplier": 1.4,      # DevOps skills very specific
+                "experience_multiplier": 1.2,   # Experience with infrastructure critical
+                "education_multiplier": 0.7,    # Less emphasis on formal education
+                "additional_multiplier": 0.8    # Certifications over extras
+            },
+            "data_scientist": {
+                "skills_multiplier": 1.1,      # Technical skills important
+                "experience_multiplier": 1.0,   # Standard experience weight
+                "education_multiplier": 1.4,    # Education very important for data science
+                "additional_multiplier": 1.1    # Research/publications valuable
+            },
+            "mobile_developer": {
+                "skills_multiplier": 1.3,      # Platform-specific skills critical
+                "experience_multiplier": 1.0,   # Standard experience weight
+                "education_multiplier": 0.9,    # Practical skills over formal education
+                "additional_multiplier": 1.2    # App portfolio important
+            }
+        }
+
+        return role_adjustments.get(detected_role, {
+            "skills_multiplier": 1.0,
+            "experience_multiplier": 1.0,
+            "education_multiplier": 1.0,
+            "additional_multiplier": 1.0
+        })
+
     async def _score_enhanced_additional_qualifications(self, resume_analysis: Dict[str, Any], job_analysis: Dict[str, Any]) -> Dict[str, Any]:
         """🎯 Enhanced additional qualifications scoring"""
         
