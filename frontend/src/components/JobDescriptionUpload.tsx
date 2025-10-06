@@ -7,7 +7,6 @@ import {
   X,
   CheckCircle,
   AlertTriangle,
-  Brain,
   Sparkles,
   ArrowRight,
   RefreshCw,
@@ -127,13 +126,35 @@ const JobDescriptionUpload: React.FC<JobDescriptionUploadProps> = ({
           response.data.extracted_job_title || ''
         );
 
-        toast.success(
-          `Job description analyzed successfully! ${enhanceWithAI ? '✨ Enhanced with AI' : ''}`,
-          {
-            icon: '🎯',
-            duration: 4000,
-          }
-        );
+        // 🌟 Enhanced: Show AI enhancement impact
+        const enhancementInfo = response.data.enhancement_info;
+        const qualityBoost = enhancementInfo?.quality_boost || 0;
+
+        const successMessage = enhanceWithAI && enhancementInfo?.was_enhanced
+          ? `Enhanced! Improved clarity by ${qualityBoost}% ✨`
+          : 'Job description analyzed successfully!';
+
+        toast.success(successMessage, {
+          icon: '🎯',
+          duration: 4000,
+        });
+
+        // 🌟 New: Show AI corrections if any were made
+        const corrections = response.data.analysis?._job_corrections_made || [];
+        if (corrections.length > 0) {
+          toast(
+            `AI auto-corrected ${corrections.length} categorization issue${corrections.length > 1 ? 's' : ''}`,
+            {
+              icon: '🔧',
+              duration: 5000,
+              style: {
+                background: '#EFF6FF',
+                color: '#1E40AF',
+                border: '1px solid #BFDBFE',
+              },
+            }
+          );
+        }
       } else {
         throw new Error('Analysis failed');
       }
@@ -142,10 +163,26 @@ const JobDescriptionUpload: React.FC<JobDescriptionUploadProps> = ({
 
       setUploadedFile(prev => prev ? { ...prev, status: 'error' } : null);
 
-      toast.error(
-        error.response?.data?.detail ||
-        'Failed to process job description file. Please try again.'
-      );
+      // 🌟 Improved: More specific error messages
+      let errorMessage = 'Failed to process job description file. Please try again.';
+
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (detail.includes('API') || detail.includes('Gemini')) {
+          errorMessage = 'AI service unavailable. Please try again in a moment.';
+        } else if (detail.includes('text') || detail.includes('extract')) {
+          errorMessage = 'Could not extract text from file. Please check file content.';
+        } else if (detail.includes('size') || detail.includes('large')) {
+          errorMessage = 'File too large. Please use a smaller file (max 20MB).';
+        } else {
+          errorMessage = detail;
+        }
+      }
+
+      toast.error(errorMessage, {
+        icon: '❌',
+        duration: 6000,
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -389,6 +426,52 @@ const JobDescriptionUpload: React.FC<JobDescriptionUploadProps> = ({
                 </motion.div>
               )}
 
+              {/* 🌟 New: AI Extraction Transparency */}
+              {uploadedFile.status === 'completed' && uploadedFile.analysis && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h5 className="text-sm font-medium text-blue-900">
+                      AI Extraction Summary
+                    </h5>
+                    <span className="text-xs text-blue-600">
+                      {(() => {
+                        const skills = uploadedFile.analysis?.required_skills || {};
+                        const totalSkills = Object.values(skills).reduce((sum: number, arr: any) =>
+                          sum + (Array.isArray(arr) ? arr.length : 0), 0
+                        );
+                        return `${totalSkills} skills extracted`;
+                      })()}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {uploadedFile.analysis?.required_skills && Object.entries(uploadedFile.analysis.required_skills).map(([category, skills]: [string, any]) => {
+                      if (!Array.isArray(skills) || skills.length === 0) return null;
+                      return (
+                        <div key={category} className="bg-white bg-opacity-50 p-2 rounded text-xs">
+                          <span className="font-semibold text-blue-800 capitalize">
+                            {category.replace(/_/g, ' ')}:
+                          </span>
+                          <span className="text-blue-600 ml-1">{skills.length} skills</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {uploadedFile.analysis?._job_corrections_made && uploadedFile.analysis._job_corrections_made.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-blue-200">
+                      <p className="text-xs text-blue-700">
+                        🔧 AI made {uploadedFile.analysis._job_corrections_made.length} automatic corrections
+                      </p>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
               {/* Preview */}
               {showPreview && uploadedFile.status === 'completed' && uploadedFile.preview && (
                 <motion.div
@@ -456,26 +539,6 @@ const JobDescriptionUpload: React.FC<JobDescriptionUploadProps> = ({
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Info Box */}
-        <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
-          <div className="flex items-start space-x-3">
-            <Brain className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-purple-800">
-              <p className="font-medium mb-1">📄 Smart Job Description Processing</p>
-              <p>Our AI will:</p>
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Extract text from PDF, DOC, and DOCX files</li>
-                <li>Automatically detect the job title</li>
-                <li>Clean and optimize the description for analysis</li>
-                <li>Extract and categorize all requirements</li>
-              </ul>
-              <div className="mt-2 text-xs text-purple-600">
-                💡 Enable AI Enhancement for optimized requirement extraction
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

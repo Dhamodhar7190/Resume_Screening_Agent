@@ -821,13 +821,32 @@ class AIAnalyzer:
     {enhanced_description}
 
     SKILL CATEGORIZATION EXAMPLES:
-    - programming_languages: Python, JavaScript, Java, C#, Go, Rust, PHP, Ruby
-    - web_frameworks: React, Angular, Vue, Django, Flask, Express, Spring Boot, Laravel
-    - databases: MySQL, PostgreSQL, MongoDB, Redis, DynamoDB, Cassandra
-    - cloud_platforms: AWS, Azure, GCP, DigitalOcean
-    - devops_tools: Docker, Kubernetes, Jenkins, GitLab CI, Terraform, Ansible
-    - frontend_tools: HTML, CSS, SASS, Webpack, Vite, Tailwind CSS
-    - testing_tools: Jest, Pytest, JUnit, Selenium, Cypress
+    - programming_languages: Python, JavaScript, Java, C#, Go, Rust, PHP, Ruby, TypeScript, Kotlin, Swift
+    - web_frameworks: React, Angular, Vue, Django, Flask, Express, Spring Boot, Laravel, FastAPI, Next.js
+    - databases: MySQL, PostgreSQL, MongoDB, Redis, DynamoDB, Cassandra, Oracle, SQL Server
+    - cloud_platforms: AWS, Azure, GCP, DigitalOcean, Heroku
+    - devops_tools: Docker, Kubernetes, Jenkins, GitLab CI, Terraform, Ansible, GitHub Actions
+    - frontend_tools: HTML, CSS, SASS, Webpack, Vite, Tailwind CSS, Bootstrap, Material-UI
+    - testing_tools: Jest, Pytest, JUnit, Selenium, Cypress, Mocha, TestNG
+
+    ⚠️ COMMON CATEGORIZATION MISTAKES TO AVOID (ANTI-PATTERNS):
+    - ❌ WRONG: Putting "React" in programming_languages → ✅ CORRECT: React belongs in web_frameworks
+    - ❌ WRONG: Putting "SQL" or "MySQL" in web_frameworks → ✅ CORRECT: SQL/MySQL belong in databases
+    - ❌ WRONG: Putting "JavaScript" in web_frameworks → ✅ CORRECT: JavaScript belongs in programming_languages
+    - ❌ WRONG: Putting "HTML/CSS" in programming_languages → ✅ CORRECT: HTML/CSS belong in frontend_tools
+    - ❌ WRONG: Putting "Django" in programming_languages → ✅ CORRECT: Django belongs in web_frameworks
+    - ❌ WRONG: Putting "Docker" in cloud_platforms → ✅ CORRECT: Docker belongs in devops_tools
+    - ❌ WRONG: Putting "Git/GitHub" in devops_tools → ✅ CORRECT: Git/GitHub belong in version_control
+    - ❌ WRONG: Categorizing soft skills like "Team Player", "Communication" as technical skills → ✅ CORRECT: Use soft_skills category
+    - ❌ WRONG: Changing "3 years experience" to "5 years" → ✅ CORRECT: Use EXACT numbers from job description
+    - ❌ WRONG: Adding skills not mentioned in the job description → ✅ CORRECT: Only extract explicitly stated skills
+
+    VALIDATION CHECKLIST (Review before returning):
+    ✓ Are all programming languages in programming_languages category?
+    ✓ Are all frameworks (React, Django, etc.) in web_frameworks category?
+    ✓ Are all databases in databases category?
+    ✓ Did I preserve the EXACT experience years from the job description?
+    ✓ Did I only include skills explicitly mentioned?
 
     Return exactly this JSON structure:
     {{
@@ -1033,11 +1052,34 @@ class AIAnalyzer:
     {resume_text}
     {job_context}
 
-    PROFICIENCY LEVEL CRITERIA (be strict and evidence-based):
-    - "expert" (5+ years): Leading projects, mentoring others, architectural decisions, deep technical knowledge
-    - "advanced" (3-5 years): Independent complex projects, optimization work, technical leadership
-    - "intermediate" (1-3 years): Regular professional use, contributing to projects, some independence
-    - "beginner" (0-1 year): Learning, basic projects, guided work, limited professional use
+    PROFICIENCY LEVEL CRITERIA (evidence-based, NOT just years):
+
+    PRIMARY CRITERIA (Use these first):
+    1. Project Complexity & Impact:
+       - "expert": Architected systems from scratch, made critical technical decisions, measurable business impact
+       - "advanced": Independently built complex features, optimized performance, solved challenging technical problems
+       - "intermediate": Built complete features with guidance, contributed to production code regularly
+       - "beginner": Worked on simple tasks, learning phase, assisted with basic implementations
+
+    2. Evidence of Mastery:
+       - "expert": Mentored others, led technical discussions, open-source contributions, technical writing
+       - "advanced": Code reviews, technical presentations, cross-team collaboration, problem-solving leadership
+       - "intermediate": Team collaboration, bug fixes, feature contributions, following best practices
+       - "beginner": Learning resources, tutorials, personal projects, guided development
+
+    SECONDARY CRITERIA (Use as supporting evidence):
+    3. Years of Experience (as reference, not requirement):
+       - "expert": Usually 5+ years, BUT can be less with exceptional depth
+       - "advanced": Usually 3-5 years, BUT can be 2 years with strong project complexity
+       - "intermediate": Usually 1-3 years, BUT can be 6 months with intensive professional use
+       - "beginner": Usually 0-1 year, includes recent learners regardless of total career length
+
+    IMPORTANT PROFICIENCY RULES:
+    - A 2-year React developer who built complex SPAs and mentored others = "advanced" or "expert"
+    - A 5-year developer who only maintains legacy code = "intermediate"
+    - Base proficiency on IMPACT and COMPLEXITY, not just duration
+    - If resume lacks evidence, default to "intermediate" for professional use, "beginner" for personal projects
+    - Look for quantified achievements: "Improved performance by 40%", "Built system serving 1M users"
 
     CRITICAL: Return ONLY the JSON object below. No explanations, no markdown, no code blocks, just the raw JSON:
 
@@ -1239,10 +1281,10 @@ class AIAnalyzer:
                     prompt,
                     generation_config=genai.types.GenerationConfig(
                         max_output_tokens=8000,
-                        temperature=0.3,  # Increased from 0.1 for better reasoning
+                        temperature=0.15,  # Optimized for structured extraction accuracy
                         candidate_count=1,
-                        top_p=0.9,        # Increased for more comprehensive responses
-                        top_k=50         # Increased for better vocabulary
+                        top_p=0.85,       # Balanced for consistent structured outputs
+                        top_k=40          # Reduced for more deterministic responses
                     )
                 )
             )

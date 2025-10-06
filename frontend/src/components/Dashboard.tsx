@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FileText, 
-  Brain, 
-  Trophy, 
-  Users, 
-  Zap,
+import {
+  FileText,
+  Brain,
+  Trophy,
+  Users,
   CheckCircle,
   Upload,
   Sparkles,
@@ -333,15 +332,9 @@ const Dashboard: React.FC = () => {
 
                     {/* Show total skills count */}
                     <div className="mt-4 pt-4 border-t border-gray-200">
-                      <div className="flex items-center justify-between text-sm text-gray-600">
-                        <span className="flex items-center">
-                          <Sparkles className="w-4 h-4 mr-2 text-purple-600" />
-                          Total Required Skills: {getAllRequiredSkills(jobAnalysis.required_skills).length}
-                        </span>
-                        <span className="flex items-center text-purple-600 font-medium">
-                          <Zap className="w-4 h-4 mr-1" />
-                          Enhanced Analysis ✨
-                        </span>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Sparkles className="w-4 h-4 mr-2 text-purple-600" />
+                        Total Required Skills: {getAllRequiredSkills(jobAnalysis.required_skills).length}
                       </div>
                     </div>
                   </div>

@@ -610,26 +610,30 @@ class ScoringEngine:
                 total_category_weight += weight
                 continue
                 
-            # If no candidate skills but requirements exist, score based on role criticality
+            # 🎯 IMPROVED: Stricter scoring for missing skills in critical categories
             if not candidate_category_skills:
-                # Critical categories get 0, less critical get partial credit
-                if weight >= 0.25:  # Critical category
-                    category_score = 0
-                elif weight >= 0.15:  # Important category  
-                    category_score = 20
-                else:  # Nice-to-have category
-                    category_score = 60
-                
+                # Critical categories (weight >= 0.25) must have skills - no partial credit
+                # Important categories get minimal credit, nice-to-have get partial credit
+                if weight >= 0.25:  # Critical category (e.g., programming_languages for backend)
+                    category_score = 0  # NO partial credit for missing critical skills
+                    logger.warning(f"⚠️ CRITICAL: No skills found for critical category '{category}' (weight: {weight})")
+                elif weight >= 0.15:  # Important category
+                    category_score = 10  # Minimal credit (reduced from 20)
+                    logger.warning(f"⚠️ Important category '{category}' has no skills (weight: {weight})")
+                else:  # Nice-to-have category (weight < 0.15)
+                    category_score = 50  # Partial credit for optional categories (reduced from 60)
+
                 category_scores[category] = category_score
                 total_weighted_score += category_score * weight
                 total_category_weight += weight
-                
-                # Add all required skills as missing
+
+                # Add all required skills as missing, mark critical ones
                 for skill in required_list:
                     missing_skills.append({
                         "skill": skill,
                         "category": category,
-                        "critical": weight >= 0.25
+                        "critical": weight >= 0.25,  # Critical if category weight is high
+                        "importance_level": "critical" if weight >= 0.25 else "important" if weight >= 0.15 else "optional"
                     })
                 continue
             
@@ -676,160 +680,161 @@ class ScoringEngine:
         }
     def _detect_role_type(self, job_analysis: Dict[str, Any], resume_analysis: Dict[str, Any]) -> str:
         """
-        🎯 FIXED: Detect the candidate's role type based on THEIR skills, not job requirements
-        
-        This method should analyze the candidate's skills and experience to determine
-        what type of developer they are, then apply appropriate scoring weights.
+        🎯 CORRECT APPROACH: Detect the JOB ROLE TYPE from job requirements
+
+        This determines what weights to use for scoring. We analyze the JOB REQUIREMENTS
+        to understand what type of role this is, then score the candidate against those requirements.
+
+        Example: If job requires React + Node.js + AWS = fullstack role
+                 Then use fullstack weights (frontend 30%, backend 25%, cloud 10%)
+                 Even if candidate is primarily backend, they're scored for fullstack fit.
         """
-        
-        # Get candidate's skills from resume analysis
-        candidate_skills = resume_analysis.get("skills_by_category", {})
-        work_history = resume_analysis.get("work_history", [])
-        candidate_summary = resume_analysis.get("candidate_summary") or ""
-        candidate_summary = candidate_summary.lower() if candidate_summary else ""
-        
-        # Extract job titles from work history
-        job_titles = " ".join([job.get("title", "").lower() for job in work_history if job.get("title")])
-        combined_text = f"{candidate_summary} {job_titles}".lower()
-        
-        logger.info(f"🎯 Analyzing candidate's role based on their skills and experience")
-        
-        # 🌟 IMPROVEMENT 1: Enhanced technology detection for candidate
+
+        # Get JOB requirements and description, NOT candidate info
+        job_title = job_analysis.get("summary", "") or ""
+        job_description = str(job_analysis.get("key_responsibilities", "")) or ""
+        required_skills = job_analysis.get("required_skills", {})
+        seniority_level = job_analysis.get("seniority_level", "")
+
+        # Combine job-related text for analysis
+        combined_text = f"{job_title} {job_description} {seniority_level}".lower()
+
+        logger.info(f"🎯 Detecting JOB ROLE TYPE from job requirements (not candidate background)")
+
+        # 🌟 Technology detection for JOB REQUIREMENTS
         frontend_techs = [
             "react", "angular", "vue", "javascript", "typescript", "jsx", "tsx",
-            "html", "css", "scss", "sass", "bootstrap", "material-ui", "angular material",
-            "frontend", "front-end", "ui", "user interface", "responsive design"
+            "html", "css", "scss", "sass", "bootstrap", "material-ui", "tailwind",
+            "frontend", "front-end", "ui", "ux", "user interface", "responsive"
         ]
-        
+
         backend_techs = [
             "python", "django", "flask", "fastapi", "java", "spring", "spring boot",
             "node.js", "nodejs", "express", "api", "rest", "restful", "graphql",
-            "backend", "back-end", "server-side", "microservices", "django rest framework",
-            "rest framework", "php", "laravel", "ruby", "rails", "go", "golang", ".net", "c#"
+            "backend", "back-end", "server-side", "microservices", "database design",
+            "php", "laravel", "ruby", "rails", "go", "golang", ".net", "c#"
         ]
-        
+
         fullstack_indicators = [
             "full stack", "fullstack", "full-stack", "end-to-end", "end to end",
-            "frontend and backend", "backend and frontend", "front-end and back-end"
+            "frontend and backend", "backend and frontend", "front-end and back-end",
+            "both frontend and backend", "across the stack"
         ]
-        
+
         devops_techs = [
-            "docker", "kubernetes", "k8s", "jenkins", "aws", "azure", "gcp", "terraform", 
-            "ansible", "devops", "ci/cd", "infrastructure", "deployment", "containerization"
+            "docker", "kubernetes", "k8s", "jenkins", "ci/cd", "terraform",
+            "ansible", "devops", "infrastructure", "deployment", "pipeline",
+            "containerization", "orchestration", "automation"
         ]
-        
+
         data_techs = [
             "pandas", "numpy", "tensorflow", "pytorch", "scikit-learn", "machine learning",
             "data science", "ml", "ai", "artificial intelligence", "jupyter", "spark",
-            "data analysis", "data engineering"
+            "data analysis", "data engineering", "deep learning", "nlp"
         ]
-        
+
         mobile_techs = [
-            "ios", "android", "swift", "kotlin", "react native", "flutter", 
-            "mobile", "mobile development", "xamarin"
+            "ios", "android", "swift", "kotlin", "react native", "flutter",
+            "mobile", "mobile development", "mobile app", "xamarin", "app development"
         ]
-        
-        # 🌟 IMPROVEMENT 2: Count skills from candidate's actual skills
-        def count_candidate_skills(tech_list, skills_dict, text):
+
+        # Count required skills from JOB (not candidate)
+        def count_job_requirements(tech_list, job_skills_dict, text):
             count = 0
             matches = []
-            
-            # Check skills from resume analysis
-            for category_name, skills_list in skills_dict.items():
+
+            # Check JOB required skills
+            for category_name, skills_list in job_skills_dict.items():
                 if isinstance(skills_list, list):
-                    for skill_item in skills_list:
-                        if isinstance(skill_item, dict):
-                            skill_name = (skill_item.get("name") or "").lower()
-                        else:
-                            skill_name = str(skill_item or "").lower()
-                        
+                    for skill in skills_list:
+                        skill_lower = str(skill).lower()
                         for tech in tech_list:
-                            if tech in skill_name or skill_name in tech:
+                            if tech in skill_lower or skill_lower in tech:
                                 count += 1
-                                matches.append(skill_name)
+                                matches.append(skill_lower)
                                 break
-            
-            # Also check text content
+
+            # Check job description text
             for tech in tech_list:
                 if tech in text:
                     count += 1
                     matches.append(tech)
-            
+
             return count, list(set(matches))  # Remove duplicates
-        
-        frontend_count, frontend_matches = count_candidate_skills(frontend_techs, candidate_skills, combined_text)
-        backend_count, backend_matches = count_candidate_skills(backend_techs, candidate_skills, combined_text)
-        devops_count, devops_matches = count_candidate_skills(devops_techs, candidate_skills, combined_text)
-        data_count, data_matches = count_candidate_skills(data_techs, candidate_skills, combined_text)
-        mobile_count, mobile_matches = count_candidate_skills(mobile_techs, candidate_skills, combined_text)
-        
-        # Check for explicit fullstack indicators in candidate's profile
+
+        frontend_count, frontend_matches = count_job_requirements(frontend_techs, required_skills, combined_text)
+        backend_count, backend_matches = count_job_requirements(backend_techs, required_skills, combined_text)
+        devops_count, devops_matches = count_job_requirements(devops_techs, required_skills, combined_text)
+        data_count, data_matches = count_job_requirements(data_techs, required_skills, combined_text)
+        mobile_count, mobile_matches = count_job_requirements(mobile_techs, required_skills, combined_text)
+
+        # Check for explicit fullstack indicators in JOB description
         fullstack_explicit = any(indicator in combined_text for indicator in fullstack_indicators)
-        
-        logger.info(f"🔢 Candidate's tech analysis:")
-        logger.info(f"   Frontend: {frontend_count} skills - {frontend_matches[:3]}")
-        logger.info(f"   Backend: {backend_count} skills - {backend_matches[:3]}")
-        logger.info(f"   DevOps: {devops_count} skills - {devops_matches[:3]}")
-        logger.info(f"   Data: {data_count} skills - {data_matches[:3]}")
-        logger.info(f"   Mobile: {mobile_count} skills - {mobile_matches[:3]}")
+
+        logger.info(f"🔢 JOB requirements tech analysis:")
+        logger.info(f"   Frontend: {frontend_count} requirements - {frontend_matches[:3]}")
+        logger.info(f"   Backend: {backend_count} requirements - {backend_matches[:3]}")
+        logger.info(f"   DevOps: {devops_count} requirements - {devops_matches[:3]}")
+        logger.info(f"   Data: {data_count} requirements - {data_matches[:3]}")
+        logger.info(f"   Mobile: {mobile_count} requirements - {mobile_matches[:3]}")
         logger.info(f"   Fullstack explicit: {fullstack_explicit}")
         
-        # 🌟 IMPROVEMENT 3: Intelligent decision logic for candidate's role
-        
-        # Explicit fullstack indicators in their profile
+        # 🌟 CORRECT: Intelligent decision logic for JOB ROLE TYPE
+
+        # Explicit fullstack indicators in JOB description
         if fullstack_explicit:
-            logger.info(f"🏆 FULLSTACK: Candidate explicitly mentions fullstack")
+            logger.info(f"🏆 JOB ROLE: FULLSTACK (explicit mention in job description)")
             return "fullstack_developer"
-        
-        # Strong fullstack profile (good in both frontend and backend)
+
+        # Strong fullstack requirements (both frontend and backend needed)
         if frontend_count >= 3 and backend_count >= 3:
-            logger.info(f"🏆 FULLSTACK: Strong in both stacks (FE:{frontend_count}, BE:{backend_count})")
+            logger.info(f"🏆 JOB ROLE: FULLSTACK (requires both FE:{frontend_count} & BE:{backend_count})")
             return "fullstack_developer"
-        
-        # Moderate fullstack profile 
+
+        # Moderate fullstack requirements
         if frontend_count >= 2 and backend_count >= 2:
-            logger.info(f"🏆 FULLSTACK: Moderate fullstack profile (FE:{frontend_count}, BE:{backend_count})")
+            logger.info(f"🏆 JOB ROLE: FULLSTACK (moderate requirements FE:{frontend_count}, BE:{backend_count})")
             return "fullstack_developer"
-        
-        # Data science specialization
+
+        # Data science role
         if data_count >= 4:
-            logger.info(f"🏆 DATA_SCIENTIST: Strong data science skills ({data_count} matches)")
+            logger.info(f"🏆 JOB ROLE: DATA_SCIENTIST ({data_count} data science requirements)")
             return "data_scientist"
-        
-        # Mobile development specialization
+
+        # Mobile development role
         if mobile_count >= 3:
-            logger.info(f"🏆 MOBILE_DEVELOPER: Strong mobile development skills ({mobile_count} matches)")
+            logger.info(f"🏆 JOB ROLE: MOBILE_DEVELOPER ({mobile_count} mobile requirements)")
             return "mobile_developer"
-        
-        # DevOps specialization (but not if strong programming background)
+
+        # DevOps role (infrastructure-focused, not general development)
         if devops_count >= 4 and (frontend_count + backend_count) < 4:
-            logger.info(f"🏆 DEVOPS: Strong DevOps focus ({devops_count} matches)")
+            logger.info(f"🏆 JOB ROLE: DEVOPS ({devops_count} DevOps requirements)")
             return "devops_engineer"
-        
-        # Backend specialization
+
+        # Backend-focused role
         if backend_count >= 4 and frontend_count < 2:
-            logger.info(f"🏆 BACKEND: Strong backend focus ({backend_count} matches)")
+            logger.info(f"🏆 JOB ROLE: BACKEND ({backend_count} backend requirements)")
             return "backend_developer"
-        
-        # Frontend specialization  
+
+        # Frontend-focused role
         if frontend_count >= 4 and backend_count < 2:
-            logger.info(f"🏆 FRONTEND: Strong frontend focus ({frontend_count} matches)")
+            logger.info(f"🏆 JOB ROLE: FRONTEND ({frontend_count} frontend requirements)")
             return "frontend_developer"
-        
-        # Default logic based on highest count
+
+        # Default logic based on highest requirement count
         if backend_count > frontend_count:
-            logger.info(f"🏆 BACKEND: Backend dominant ({backend_count} vs {frontend_count})")
+            logger.info(f"🏆 JOB ROLE: BACKEND (dominant: {backend_count} vs {frontend_count})")
             return "backend_developer"
         elif frontend_count > backend_count:
-            logger.info(f"🏆 FRONTEND: Frontend dominant ({frontend_count} vs {backend_count})")
+            logger.info(f"🏆 JOB ROLE: FRONTEND (dominant: {frontend_count} vs {backend_count})")
             return "frontend_developer"
         else:
-            # For equal counts, check for any fullstack indicators or default to fullstack
+            # Equal or both low - check if both stacks are needed
             if frontend_count >= 1 and backend_count >= 1:
-                logger.info(f"🏆 FULLSTACK: Equal counts with both stacks present")
+                logger.info(f"🏆 JOB ROLE: FULLSTACK (both stacks required)")
                 return "fullstack_developer"
             else:
-                logger.info(f"🏆 GENERAL: Insufficient clear specialization")
+                logger.info(f"🏆 JOB ROLE: GENERAL (no clear specialization)")
                 return "general_developer"
     
     def _match_skills_with_intelligence(self, candidate_skills: List, required_skills: List, category: str) -> Dict[str, Any]:

@@ -482,40 +482,6 @@ const JobInput: React.FC<JobInputProps> = ({
             </motion.button>
             </div>
           )}
-
-          {/* 🌟 NEW: Enhancement Info Box - Show for both modes */}
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4 flex items-start space-x-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-blue-800">
-              <p className="font-medium mb-1">
-                {inputMethod === 'file' ? '📄 Smart File Processing' : '🚀 Enhanced AI Analysis'}
-              </p>
-              <p>Our advanced AI will:</p>
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                {inputMethod === 'file' ? (
-                  <>
-                    <li>Extract text from PDF, DOC, and DOCX files automatically</li>
-                    <li>Detect job titles and clean formatting</li>
-                    <li>Extract and categorize all requirements intelligently</li>
-                    <li>Optimize the content for accurate candidate matching</li>
-                  </>
-                ) : (
-                  <>
-                    <li>Clean and optimize your job description for better results</li>
-                    <li>Extract and categorize required vs preferred skills</li>
-                    <li>Standardize skill terminology and experience requirements</li>
-                    <li>Identify missing requirements and suggest improvements</li>
-                  </>
-                )}
-              </ul>
-              <div className="mt-2 text-xs text-blue-600">
-                {inputMethod === 'file'
-                  ? '💡 Tip: Enable AI Enhancement for optimized requirement extraction'
-                  : '💡 Tip: Turn off AI Enhancement if you prefer to use your exact wording'
-                }
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
